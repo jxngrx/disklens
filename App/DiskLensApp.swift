@@ -5,8 +5,12 @@ import SwiftUI
 @main
 struct DiskLensApp: App {
     @State private var model: AppModel
+    @State private var status = DiskStatus()
 
     init() {
+        // With a menu bar extra the app can quit with no windows; restoring that state would launch
+        // with no map. Always open a fresh main window instead.
+        UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": false, "ApplePersistenceIgnoreState": true])
         // `-scanRoot <path>` scans a folder instead of the whole disk (UI tests, fixtures).
         let root = UserDefaults.standard.string(forKey: "scanRoot") ?? "/"
         _model = State(initialValue: AppModel(rootPath: root))
@@ -16,7 +20,7 @@ struct DiskLensApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("DiskLens") {
+        WindowGroup("DiskLens", id: "main") {
             ContentView(model: model)
                 .frame(minWidth: 900, minHeight: 560)
         }
@@ -27,7 +31,18 @@ struct DiskLensApp: App {
                 Button("Enclosing Folder") { model.up() }.keyboardShortcut(.upArrow, modifiers: .command)
             }
         }
-        Settings { LicenseSettings() }
+        Settings {
+            TabView {
+                LicenseSettings().tabItem { Label("License", systemImage: "key") }
+                BackgroundSettings().tabItem { Label("Background", systemImage: "clock.arrow.circlepath") }
+            }
+        }
+        MenuBarExtra {
+            MenuBarContent(status: status, model: model)
+        } label: {
+            Label(formatBytes(status.freeBytes), systemImage: "internaldrive")
+                .labelStyle(.titleAndIcon)
+        }
     }
 }
 
@@ -74,6 +89,10 @@ struct ContentView: View {
                 Button { model.reloadQuarantine(); model.showQuarantine = true } label: { Label("Quarantine", systemImage: "arrow.uturn.backward.circle") }
                     .help("Cleaned items you can still restore")
                     .accessibilityIdentifier("quarantine")
+                Button { model.showMobile = true } label: { Label("Mobile", systemImage: "iphone.gen3") }
+                    .help("Android SDK, emulators and simulator runtimes")
+                Button { model.showGrowth = true } label: { Label("Growth", systemImage: "chart.xyaxis.line") }
+                    .help("Disk growth timeline")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -96,6 +115,8 @@ struct ContentView: View {
         }
         .sheet(isPresented: $model.showProjects) { ProjectsView(model: model) }
         .sheet(isPresented: $model.showQuarantine) { QuarantineView(model: model) }
+        .sheet(isPresented: $model.showMobile) { MobilePackView(model: model) }
+        .sheet(isPresented: $model.showGrowth) { GrowthView(model: model) }
         .background {
             // Esc goes back.
             Button("") { model.back() }.keyboardShortcut(.cancelAction).hidden()

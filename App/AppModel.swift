@@ -56,6 +56,8 @@ final class AppModel {
     var cleanMessage: String?
     var showProjects = false
     var showQuarantine = false
+    var showMobile = false
+    var showGrowth = false
     var quarantineItems: [QuarantineItem] = []
 
     private var seenVersion: UInt64 = .max
@@ -103,6 +105,8 @@ final class AppModel {
         }
         Task.detached(priority: .userInitiated) {
             await index.start()
+            // Growth timeline sample for the startup volume (at most hourly).
+            if index.store.rootPath == "/" { History.record(store: index.store) }
             await MainActor.run {
                 self.scanning = false
                 if let p = openPath, let id = self.store.find(path: p) { self.jump(to: id) }
@@ -113,6 +117,8 @@ final class AppModel {
                 }
                 if UserDefaults.standard.bool(forKey: "showProjects") { self.showProjects = true }
                 if UserDefaults.standard.bool(forKey: "showQuarantine") { self.reloadQuarantine(); self.showQuarantine = true }
+                if UserDefaults.standard.bool(forKey: "showMobile") { self.showMobile = true }
+                if UserDefaults.standard.bool(forKey: "showGrowth") { self.showGrowth = true }
                 if let h = UserDefaults.standard.string(forKey: "hoverName"), let b = self.boxes.first(where: { $0.node?.name == h }) {
                     self.hovered = b
                     self.hoverPoint = CGPoint(x: b.rect.midX, y: b.rect.midY)
@@ -254,7 +260,9 @@ final class AppModel {
         if let h = hovered { hovered = boxes.first { $0.id == h.id } }
     }
 
-    var sheetOpen: Bool { cleanPlan != nil || showProjects || showQuarantine || smallerItems != nil || trashCandidate != nil }
+    var sheetOpen: Bool {
+        cleanPlan != nil || showProjects || showQuarantine || showMobile || showGrowth || smallerItems != nil || trashCandidate != nil
+    }
 
     func box(at p: CGPoint) -> Box? { boxes.first { $0.rect.contains(p) } }
 
@@ -345,6 +353,14 @@ final class AppModel {
             cleanMessage = "Restore failed: \(error)"
         }
         reloadQuarantine()
+    }
+
+    /// Pro: reinstall a cleaned project's dependencies from its lockfile.
+    func reinstall(project: String) {
+        guard let cmd = Projects.restoreCommand(project) else { return }
+        let r = cleaner.runner.run(cmd, in: project)
+        cleanMessage = (r.ok ? "Ran " : "Failed: ") + cmd.joined(separator: " ") + " in " + (project as NSString).lastPathComponent
+            + (cleaner.runner.dryRun ? " (dry run)" : "")
     }
 
     func emptyQuarantine() {

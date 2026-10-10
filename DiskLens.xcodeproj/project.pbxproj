@@ -12,6 +12,7 @@
 		42F2205D2F0A2473A56F8F45 /* DiskLensCore in Frameworks */ = {isa = PBXBuildFile; productRef = A2EF832CCF345F3C7A96CEC9 /* DiskLensCore */; };
 		57B85D468E9CA8E980CBC3FE /* License.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A17B7832E93ABF39028CAA /* License.swift */; };
 		65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99F86BBCB63A3ABFC60F545 /* TreemapView.swift */; };
+		664AA54D82893EC5EECDB987 /* ProViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B1645AE6E30FDD9A8026A82 /* ProViews.swift */; };
 		88A1DF43AAF849F06A718DD1 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED56641580DBBF22D5DEEE9 /* Category.swift */; };
 		91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6EA64F916BB6811CDD73A37 /* NavigationViews.swift */; };
 		A924BE7ED0206A31482CB4AA /* CleanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B044A7A769D3540090EF75 /* CleanViews.swift */; };
@@ -31,6 +32,7 @@
 
 /* Begin PBXFileReference section */
 		0DC371F0C76FF052F1A3CD0C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		1B1645AE6E30FDD9A8026A82 /* ProViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProViews.swift; sourceTree = "<group>"; };
 		35A17B7832E93ABF39028CAA /* License.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = License.swift; sourceTree = "<group>"; };
 		4ED56641580DBBF22D5DEEE9 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		688423D5D3DD9BD3211DBA24 /* DiskLensUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiskLensUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,6 +119,7 @@
 			children = (
 				E7B044A7A769D3540090EF75 /* CleanViews.swift */,
 				35A17B7832E93ABF39028CAA /* License.swift */,
+				1B1645AE6E30FDD9A8026A82 /* ProViews.swift */,
 			);
 			path = Clean;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 				F3C072D63D219A2D338B85FB /* DiskLensApp.swift in Sources */,
 				57B85D468E9CA8E980CBC3FE /* License.swift in Sources */,
 				91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */,
+				664AA54D82893EC5EECDB987 /* ProViews.swift in Sources */,
 				65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

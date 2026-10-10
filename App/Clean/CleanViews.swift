@@ -156,6 +156,14 @@ struct QuarantineView: View {
                     }
                     Spacer()
                     Text(formatBytes(item.bytes)).monospacedDigit()
+                    // Pro: one-button reinstall from the project's lockfile.
+                    if item.ruleID == model.rules.artifactRule.id,
+                       let project = model.rules.projectOwning(artifact: item.originalPath) ?? Optional((item.originalPath as NSString).deletingLastPathComponent),
+                       let cmd = Projects.restoreCommand(project) {
+                        Button(cmd.joined(separator: " ")) { model.reinstall(project: project) }
+                            .help("Reinstall dependencies from the lockfile instead of restoring the old copy")
+                            .disabled(!License.proEnabled)
+                    }
                     Button("Restore") { model.restore(item) }.accessibilityIdentifier("restore-\((item.originalPath as NSString).lastPathComponent)")
                 }
             }

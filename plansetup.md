@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 6
-- **Current task:** 6.1 restore buttons
-- **Last updated:** 2026-10-10 23:40 IST
+- **Current phase:** 7
+- **Current task:** 7.1 final review
+- **Last updated:** 2026-10-10 23:52 IST
 
 ## Plan
 
@@ -75,14 +75,14 @@
 - [x] 5.9 Tag `phase-5-done`
 
 ### Phase 6 — Pro and CLI
-- [ ] 6.1 Restore buttons (npm ci / yarn / pnpm / pod install) — dry-run tested
-- [ ] 6.2 Mobile pack: AVDs, system images/NDKs, simulator runtimes, unavailable simulators
-- [ ] 6.3 Menu bar free-space display + low-disk alert
-- [ ] 6.4 `disklens` CLI (scan, top, rules, clean --dry-run, quarantine list/restore/purge)
-- [ ] 6.5 Daemon mode with "keep N GB free" policy (dry-run tested)
-- [ ] 6.6 Growth timeline (history file + Swift Charts)
-- [ ] 6.7 Screenshots `docs/screenshots/phase-6/`
-- [ ] 6.8 Tag `phase-6-done`
+- [x] 6.1 Restore buttons (npm ci / yarn / pnpm / pod install) — dry-run tested
+- [x] 6.2 Mobile pack: AVDs, system images/NDKs, simulator runtimes, unavailable simulators
+- [x] 6.3 Menu bar free-space display + low-disk alert
+- [x] 6.4 `disklens` CLI (scan, top, rules, clean --dry-run, quarantine list/restore/purge)
+- [x] 6.5 Daemon mode with "keep N GB free" policy (dry-run tested)
+- [x] 6.6 Growth timeline (history file + Swift Charts)
+- [x] 6.7 Screenshots `docs/screenshots/phase-6/`
+- [x] 6.8 Tag `phase-6-done`
 
 ### Wrap-up
 - [ ] 7.1 Final review section
@@ -106,6 +106,7 @@
 - 2026-10-10 23:25 IST — 4.1/4.2/4.4/4.5/4.9/4.10 Core: `Rules/rules.json` (15 rules + project markers + artifact folders), `Rules/Rules.swift` (RuleSet loader, fnmatch matcher that re-checks the file system, keep-newest-N, project ownership, scanner hook), `Rules/Projects.swift` (collect, last-worked-on, restore command), `Cleaner/Quarantine.swift` (same-volume rename + JSON manifest, restore, purge, empty now), `Cleaner/Cleaner.swift` (CommandRunner with dry-run, running-tool probes, plan/execute with re-check). Tests `CleanerTests.swift`: 6 new, all pass (20/20 total).
 - 2026-10-10 23:33 IST — 4.3–4.13 App: cleanable outline + safety badges, Clean… context item, confirm sheet (quarantine vs tool command, running-tool warnings with Quit), Projects sheet (reclaimable, last worked on, 30+ day filter, Clean Selected), Quarantine sheet (Restore, Empty Now), purge on launch, license/trial stub in Settings, clean message bar with Undo. CLI: `rules`, `clean`, `quarantine`. UI tests now run (automation mode became available) — all 3 pass after forcing the sidebar visible. Screenshot fixes: tooltip lingering under sheets (hover ignored while a sheet is up), sheet title, artifact names relative to project, '1 files', badge hiding the label on narrow boxes. Tagged phase-4-done.
 - 2026-10-10 23:40 IST — 5.1–5.9 `Tree/Snapshot.swift` (compacting BFS binary format, mmap load), `Watcher/Watcher.swift` (FSEventStream file events 1 s latency, coalescer), `Watcher/LiveIndex.swift` (open from snapshot if root + FSEvents volume UUID match, replay since saved event id, live updates, subtree relist, ignore own index/quarantine, save after scan / every 5 min / on quit). App: status 'Index from X ago · catching up…' → 'Live · index saved X ago'. Bugs found from screenshots and fixed: (1) relisting '/' dropped the System & other node; (2) Canvas redrew with the paused timeline's stale date, freezing boxes mid-animation (now wall clock); (3) MustScanSubDirs reset whole subtrees to pending, so the map fell to '≥ 60 GB' — now subtrees are relisted in place and the old map stays visible; (4) restricted count double-counted after resets. Tagged phase-5-done.
+- 2026-10-10 23:52 IST — 6.1–6.8 Core: `Cleaner/MobilePack.swift` (AVDs, system images with AVD usage, NDKs with project ndkVersion usage, simctl runtimes with device usage, unavailable simulators; simctl injectable), `Cleaner/Policy.swift` (KeepFreePolicy: oldest quarantine → tool commands → Safe/Rebuildable quarantine, never Caution; dry-run apply; History JSON lines). CLI: `projects`, `mobile`, `history`, `daemon --keep-free`. App: Reinstall button (npm ci / yarn / pnpm / pod install) in Quarantine, Mobile pack sheet, Growth chart (Swift Charts), MenuBarExtra free space + low-disk notification + threshold menu, login item toggle (SMAppService) in Settings. Bug found by UI tests: with the menu bar extra, restored window state could launch with **no main window**; fixed by ignoring persisted window state. Tagged phase-6-done.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -133,8 +134,17 @@
 - Snapshot stores only complete trees and is compacted (detached nodes dropped, BFS order). Hard-link ownership is not persisted: after a relaunch, a rescanned folder may count a hard link already counted elsewhere (ponytail note in LiveIndex era; acceptable drift until the next full scan).
 - Index lost detection uses the FSEvents volume UUID + `EventIdsWrapped`/`RootChanged` flags; then all folders are relisted in place while the old map stays visible.
 - Fixture scans keep their index in `$TMPDIR/disklens-fixtures/.indexes/`; `-indexDir` overrides.
+- Daemon is a foreground `disklens daemon` loop (launchd plist not generated); the app's background mode is a login item via SMAppService.
+- Mobile-pack items in use are shown but their Remove button is disabled; no override in the UI.
+- Low-disk alert threshold defaults to 10 GB and asks for notification permission only when first crossed.
 
 ## Deviations from spec
+- `swift-argument-parser` not used for the CLI: argv is parsed by hand (≈30 lines) to avoid a network dependency and a new package for 8 subcommands.
+- Growth timeline uses a JSON-lines file instead of SQLite/GRDB.
+- Sparkle updates, Developer ID signing/notarization and Paddle/Lemon Squeezy licensing are not integrated (ad-hoc signing, local license stub).
+- Squarify/hit testing live in DiskLensCore/Layout rather than App/Treemap (testable with `swift test`).
+- No separate C shim target (Swift calls getattrlistbulk/FSEvents directly).
+- Restricted folders are drawn with a dashed outline and 'unknown size'; with zero bytes they get no area, so they mostly show in the sidebar, tooltips and the banner count.
 
 ## Test results
 ### Phase 1
@@ -160,6 +170,12 @@
 - `swift test -c release -Xswiftc -enable-testing --filter 'SnapshotTests|LiveUpdateTests'`: 1 M-node snapshot save 0.57 s, **load 0.108 s**, 83 MB file; **1 GB file reflected 0.17 s after the write finished** (write itself 0.53 s; FSEvents latency 1 s from first event) — target 3 s ✔.
 - Real disk relaunch (Release app, 54.5 MB `index-root.bin`, ~830 k nodes): **first boxes 0.349 s after process start** (0.027 s after model start) — target 1 s ✔. Fresh launch without index: first boxes 0.788 s after process start (0.101 s after scan start).
 - Catch-up after relaunch kept the map stable (no subtree reset, 458 restricted, root total unchanged).
+### Phase 6
+- `swift test` — **30 passed** (adds mobile pack in-use detection with injected simctl JSON, keep-free policy order + dry-run touches nothing (SHA-256 of the whole fake home), history round trip, lockfile → restore command).
+- `disklens daemon --keep-free 50 --root <fixture> --once --dry-run ...` → 12 planned steps, all `[dry-run]`, fixture unchanged.
+- `disklens mobile` on this Mac (read-only): 1 AVD 5.31 GB, 6 system images (1 in use by the AVD), 3 NDKs, 1 simulator runtime 8.49 GB (in use).
+- `xcodebuild ... test` — **3/3 UI tests pass** (after the no-window fix).
+- `DiskLens -selftest` on a fresh showcase fixture — SELFTEST OK (26 checks). `DiskLens -benchmark` — 5,000 boxes 2.37 ms/frame.
 
 ## Blockers & workarounds
 - **XCUITest automation mode** (phase 2+): `xcodebuild test` fails with "The test runner failed to initialize for UI testing. (Underlying Error: Timed out while enabling automation mode.)". macOS wants an admin to authorise UI automation, and I may not use sudo. **You need to:** run `sudo automationmodetool enable-automationmode-without-authentication` once (or approve the prompt when running the tests from Xcode), then rerun the test command. Workaround: `DiskLens -selftest` drives the same model calls (hit test → activate, breadcrumb, back, parent) headlessly.
