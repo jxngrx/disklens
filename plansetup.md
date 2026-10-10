@@ -2,8 +2,8 @@
 
 ## Status
 - **Current phase:** 4
-- **Current task:** 4.1 rules.json
-- **Last updated:** 2026-10-10 23:22 IST
+- **Current task:** 4.3 cleanable tags in app
+- **Last updated:** 2026-10-10 23:25 IST
 
 ## Plan
 
@@ -49,16 +49,16 @@
 - [x] 3.9 Tag `phase-3-done`
 
 ### Phase 4 — Rules, projects, quarantine
-- [ ] 4.1 `rules.json` (bundled resource) + loader + matcher
-- [ ] 4.2 Project detection (markers), artifact folders, staleness
+- [x] 4.1 `rules.json` (bundled resource) + loader + matcher
+- [x] 4.2 Project detection (markers), artifact folders, staleness
 - [ ] 4.3 Cleanable tags + badges in treemap
-- [ ] 4.4 Quarantine (rename into `~/.disklens-quarantine/<date>/`), restore, purge after N days, empty now
-- [ ] 4.5 Tool commands with dry-run mode; running-tool checks
+- [x] 4.4 Quarantine (rename into `~/.disklens-quarantine/<date>/`), restore, purge after N days, empty now
+- [x] 4.5 Tool commands with dry-run mode; running-tool checks
 - [ ] 4.6 Projects view (reclaimable, last worked on, 30+ day filter)
 - [ ] 4.7 Clean confirm sheet (tool-command items marked non-quarantinable)
 - [ ] 4.8 License + trial (stub)
-- [ ] 4.9 Check: clean then restore is byte-identical
-- [ ] 4.10 Check: nothing outside a rule's paths can be selected for cleaning
+- [x] 4.9 Check: clean then restore is byte-identical
+- [x] 4.10 Check: nothing outside a rule's paths can be selected for cleaning
 - [ ] 4.11 XCUITest: clean confirm sheet
 - [ ] 4.12 Screenshots `docs/screenshots/phase-4/`
 - [ ] 4.13 Tag `phase-4-done`
@@ -103,6 +103,7 @@
 - 2026-10-10 23:18 IST — 2.1–2.11 App target via XcodeGen (`project.yml`, `App/`, `UITests/`), Canvas renderer, zoom, breadcrumb, back/parent keys + swipe, tooltip, context menu, sidebar, smaller-items sheet, legend, benchmark + self-test debug modes. Screenshots in docs/screenshots/phase-2/. Fixed after looking at screenshots: legend wrapping into 3-line labels (now ViewThatFits with dot fallback), second-level preview overlapping the label (now starts below it, tinted by child category), default window size. 2.10 XCUITest blocked (automation mode), see Blockers.
 - 2026-10-10 23:19 IST — 2.12 Tagged phase-2-done.
 - 2026-10-10 23:22 IST — 3.1–3.9 Priority queue (focus subtree tier, re-partition on drill-in) + test; bucketed stable order during scans; size changes ease between layouts (200 ms); System & other added on scan completion; Full Disk Access banner with restricted count. Screenshots in docs/screenshots/phase-3/. Bugs found from screenshots and fixed: (1) stable order fed unsorted sizes to a layout that assumed descending order, so one '8 smaller items' box swallowed the map — layout is now order-agnostic and the model only swaps items across ~41% size buckets; (2) the Canvas TimelineView paused mid-resize animation, freezing overlapping boxes — now a `resizing` flag keeps it running until the ease ends. Tagged phase-3-done.
+- 2026-10-10 23:25 IST — 4.1/4.2/4.4/4.5/4.9/4.10 Core: `Rules/rules.json` (15 rules + project markers + artifact folders), `Rules/Rules.swift` (RuleSet loader, fnmatch matcher that re-checks the file system, keep-newest-N, project ownership, scanner hook), `Rules/Projects.swift` (collect, last-worked-on, restore command), `Cleaner/Quarantine.swift` (same-volume rename + JSON manifest, restore, purge, empty now), `Cleaner/Cleaner.swift` (CommandRunner with dry-run, running-tool probes, plan/execute with re-check). Tests `CleanerTests.swift`: 6 new, all pass (20/20 total).
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -120,6 +121,11 @@
 - Core type is `DiskScanner` (not `Scanner`) to avoid clashing with `Foundation.Scanner`.
 - System & other is computed once the scan completes. Updating it mid-scan made it a 185 GB box that shrank as the scan progressed, which reads as wrong; the root shows '≥ X' until then.
 - Stable order uses log-size buckets (two per doubling): siblings only swap when one outgrows the other by ~41%.
+- Matching always re-reads the file system (lstat, marker files) instead of trusting tree tags, and refuses symlinks, `..`, `/`; the cleaner re-matches right before acting.
+- Added plain `Pods` (with a Podfile marker) to the artifact list for native iOS projects; spec only listed `ios/Pods`.
+- Unavailable simulators / simulator runtimes have no path, so they live in the Mobile pack (phase 6), not in rules.json path rules.
+- Quarantine refuses cross-volume moves (no copy fallback): a copy of a 2 GB node_modules is not 'instant' and could fill the disk.
+- `CommandRunner` runs tools via `/usr/bin/env` with Homebrew/Android paths appended; `DISKLENS_DRY_RUN=1` forces dry-run everywhere.
 
 ## Deviations from spec
 

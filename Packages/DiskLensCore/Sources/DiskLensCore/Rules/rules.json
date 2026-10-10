@@ -1,1 +1,37 @@
-{"rules": []}
+{
+  "version": 1,
+  "projectMarkers": ["package.json", "Podfile", "build.gradle", "build.gradle.kts", "pubspec.yaml", "*.xcodeproj", "Cargo.toml", "go.mod"],
+  "artifactFolders": ["node_modules", "ios/Pods", "ios/build", "android/build", "android/app/build", "android/.cxx", ".gradle", ".dart_tool", "target", ".next", "dist", "Pods"],
+  "rules": [
+    { "id": 1, "name": "Xcode DerivedData", "paths": ["~/Library/Developer/Xcode/DerivedData/*"], "safety": "safe", "ecosystem": "apple",
+      "runningTools": ["Xcode"], "note": "Rebuilt on the next Xcode build." },
+    { "id": 2, "name": "Old iOS DeviceSupport", "paths": ["~/Library/Developer/Xcode/iOS DeviceSupport/*"], "safety": "safe", "ecosystem": "apple",
+      "keepNewest": 2, "runningTools": ["Xcode"], "note": "The newest 2 versions are kept." },
+    { "id": 3, "name": "Xcode Archives", "paths": ["~/Library/Developer/Xcode/Archives/*"], "safety": "caution", "ecosystem": "apple",
+      "note": "Needed to symbolicate crashes from old releases." },
+    { "id": 4, "name": "Gradle caches", "paths": ["~/.gradle/caches"], "safety": "rebuildable", "ecosystem": "android",
+      "runningTools": ["Gradle daemon"], "preCommand": ["gradle", "--stop"], "note": "Dependencies download again on the next build." },
+    { "id": 5, "name": "Android AVD", "paths": ["~/.android/avd/*.avd"], "safety": "caution", "ecosystem": "android",
+      "command": ["avdmanager", "delete", "avd", "-n", "{stem}"], "runningTools": ["Android Emulator"], "note": "Deletes the emulator and its data." },
+    { "id": 6, "name": "Android system image", "paths": ["$ANDROID_HOME/system-images/*/*/*"], "safety": "caution", "ecosystem": "android",
+      "command": ["sdkmanager", "--uninstall", "{sdkPackage}"], "note": "Only remove versions no project or AVD uses." },
+    { "id": 7, "name": "Android NDK", "paths": ["$ANDROID_HOME/ndk/*"], "safety": "caution", "ecosystem": "android",
+      "command": ["sdkmanager", "--uninstall", "ndk;{name}"], "note": "Only remove versions no project uses." },
+    { "id": 8, "name": "CocoaPods cache", "paths": ["~/Library/Caches/CocoaPods"], "safety": "rebuildable", "ecosystem": "apple",
+      "command": ["pod", "cache", "clean", "--all"] },
+    { "id": 9, "name": "npm cache", "paths": ["~/.npm"], "safety": "rebuildable", "ecosystem": "node",
+      "command": ["npm", "cache", "clean", "--force"] },
+    { "id": 10, "name": "Yarn cache", "paths": ["~/Library/Caches/Yarn"], "safety": "rebuildable", "ecosystem": "node",
+      "command": ["yarn", "cache", "clean"] },
+    { "id": 11, "name": "pnpm store", "paths": ["~/Library/pnpm/store"], "safety": "rebuildable", "ecosystem": "node",
+      "command": ["pnpm", "store", "prune"] },
+    { "id": 12, "name": "Metro cache", "paths": ["$TMPDIR/metro-*"], "safety": "safe", "ecosystem": "node",
+      "runningTools": ["Metro"], "note": "Also run `watchman watch-del-all` to reset watchman state." },
+    { "id": 13, "name": "Homebrew cache", "paths": ["~/Library/Caches/Homebrew"], "safety": "safe", "ecosystem": "otherDev",
+      "command": ["brew", "cleanup", "-s"] },
+    { "id": 14, "name": "Docker VM disk", "paths": ["~/Library/Containers/com.docker.docker/Data/vms/*"], "safety": "caution", "ecosystem": "otherDev",
+      "command": ["docker", "system", "prune", "-f"], "runningTools": [], "note": "Runs `docker system df` first; volumes are never pruned." },
+    { "id": 15, "name": "Project build artifact", "artifact": true, "safety": "rebuildable", "ecosystem": "",
+      "note": "Rebuilt by the project's package manager or build tool." }
+  ]
+}
