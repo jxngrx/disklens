@@ -10,6 +10,8 @@ struct Box: Identifiable {
     var rect: CGRect
     var merged: [NodeInfo] = []
     var preview: [(rect: CGRect, category: Category)] = []
+    /// Rect in the previous layout, so size changes animate.
+    var from: CGRect?
     var category: Category
 }
 
@@ -33,6 +35,10 @@ final class AppModel {
     private(set) var scanning = true
     private(set) var scanStarted = Date()
     private(set) var firstBoxesAt: TimeInterval?
+    private(set) var layoutAt = Date.distantPast
+    private(set) var restrictedCount = 0
+    /// True while boxes ease between two layouts.
+    var resizing = false
     var canvasSize: CGSize = .zero { didSet { if canvasSize != oldValue { relayout() } } }
     var hovered: Box?
     var hoverPoint: CGPoint = .zero
@@ -136,26 +142,35 @@ final class AppModel {
         seenVersion = v
         var kids = store.children(of: current)
         let currentInfo = store.node(current)
-        // Keep box order stable while sizes are still growing so boxes don't jump around.
+        // Keep box order stable while sizes are still growing so boxes don't jump around: items only
+        // swap when one grows past the other by a size bucket (~41%), otherwise the previous order wins.
         if currentInfo.state != .complete, !order.isEmpty {
+            func bucket(_ n: NodeInfo) -> Int { n.totalBytes == 0 ? -1 : Int(log2(Double(n.totalBytes)) * 2) }
             kids.sort { a, b in
+                let (ba, bb) = (bucket(a), bucket(b))
+                if ba != bb { return ba > bb }
                 switch (order[a.id], order[b.id]) {
-                case let (x?, y?): x < y
-                case (_?, nil): true
-                case (nil, _?): false
-                default: a.totalBytes > b.totalBytes
+                case let (x?, y?): return x < y
+                case (_?, nil): return true
+                case (nil, _?): return false
+                default: return a.totalBytes > b.totalBytes
                 }
             }
         }
         order = Dictionary(uniqueKeysWithValues: kids.enumerated().map { ($1.id, $0) })
         children = kids
         crumbs = store.ancestry(of: current).map { store.node($0) }
-        if firstBoxesAt == nil, !kids.isEmpty { firstBoxesAt = Date().timeIntervalSince(scanStarted) }
-        relayout()
+        if firstBoxesAt == nil, !kids.isEmpty {
+            firstBoxesAt = Date().timeIntervalSince(scanStarted)
+            NSLog("DiskLens first boxes after %.3f s (%d boxes)", firstBoxesAt!, kids.count)
+        }
+        restrictedCount = store.restrictedCount
+        relayout(animated: true)
     }
 
-    func relayout() {
+    func relayout(animated: Bool = false) {
         let bounds = CGRect(origin: .zero, size: canvasSize)
+        let old = animated && zoom == nil ? Dictionary(boxes.map { ($0.id, $0.rect) }, uniquingKeysWith: { a, _ in a }) : [:]
         let kids = children.filter { $0.totalBytes > 0 }
         let rects = Squarify.layout(sizes: kids.map { Double($0.totalBytes) }, in: bounds)
         boxes = rects.map { r in
@@ -174,6 +189,8 @@ final class AppModel {
             }
             return box
         }
+        for i in boxes.indices { if let r = old[boxes[i].id], r != boxes[i].rect { boxes[i].from = r; resizing = true } }
+        layoutAt = Date()
         if let h = hovered { hovered = boxes.first { $0.id == h.id } }
     }
 

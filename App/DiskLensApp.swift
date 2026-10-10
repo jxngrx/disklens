@@ -33,6 +33,7 @@ struct DiskLensApp: App {
 struct ContentView: View {
     @Bindable var model: AppModel
     @State private var swipeMonitor: Any?
+    @AppStorage("fdaBannerDismissed") private var fdaDismissed = false
 
     var body: some View {
         NavigationSplitView {
@@ -40,6 +41,9 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280)
         } detail: {
             VStack(spacing: 0) {
+                if model.restrictedCount > 0 && !fdaDismissed {
+                    FullDiskAccessBanner(count: model.restrictedCount) { fdaDismissed = true }
+                }
                 BreadcrumbBar(model: model)
                 Divider()
                 TreemapView(model: model)
@@ -86,5 +90,27 @@ struct ContentView: View {
                 return e
             }
         }
+    }
+}
+
+/// One-time banner shown when folders came back permission-denied.
+struct FullDiskAccessBanner: View {
+    let count: Int
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.fill").foregroundStyle(.orange)
+            Text("\(count) folders need Full Disk Access to be sized. They show as Restricted.")
+                .font(.callout)
+            Spacer()
+            Button("Open Full Disk Access Settings") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+            }
+            Button("Dismiss", action: dismiss).buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Color.orange.opacity(0.12))
+        .accessibilityIdentifier("fda-banner")
     }
 }

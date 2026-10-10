@@ -9,27 +9,28 @@ public struct TreemapRect: Sendable, Equatable {
 
 /// Squarified treemap (Bruls, Huizing, van Wijk 2000).
 public enum Squarify {
-    /// `sizes` must be sorted descending. Returns one rect per kept item plus an optional merged box.
-    /// Items under `minFraction` of the total, or whose box would be under `minSide` points, are merged.
+    /// Lays out `sizes` in the given order (best when sorted descending). Returns one rect per kept item plus an
+    /// optional merged box. Items under `minFraction` of the total, or whose box would be under `minSide` points, are merged.
     public static func layout(sizes: [Double], in bounds: CGRect,
                               minFraction: Double = 0.005, minSide: CGFloat = 24) -> [TreemapRect] {
         let total = sizes.reduce(0, +)
         guard total > 0, bounds.width > 0, bounds.height > 0 else { return [] }
-        var keep = sizes.prefix { $0 / total >= minFraction && $0 > 0 }.count
+        var kept = sizes.indices.filter { sizes[$0] > 0 && sizes[$0] / total >= minFraction }
         while true {
-            let mergedSize = sizes[keep...].reduce(0, +)
-            var values = Array(sizes[..<keep])
+            let keptSet = Set(kept)
+            let merged = sizes.indices.filter { sizes[$0] > 0 && !keptSet.contains($0) }
+            let mergedSize = merged.reduce(0) { $0 + sizes[$1] }
+            var values = kept.map { sizes[$0] }
             if mergedSize > 0 { values.append(mergedSize) }
             let rects = squarify(values, in: bounds)
-            // Too-small boxes among the kept ones: fold the smallest kept item and retry.
-            if keep > 0, let bad = rects.prefix(keep).firstIndex(where: { $0.width < minSide || $0.height < minSide }) {
-                keep = min(keep - 1, bad)
+            // Too-small boxes: fold them (and anything no bigger) into the merged box and retry.
+            let bad = kept.indices.filter { rects[$0].width < minSide || rects[$0].height < minSide }
+            if let limit = bad.map({ sizes[kept[$0]] }).max() {
+                kept.removeAll { sizes[$0] <= limit }
                 continue
             }
-            var out = (0..<keep).map { TreemapRect(index: $0, rect: rects[$0]) }
-            if mergedSize > 0, let r = rects.last {
-                out.append(TreemapRect(index: nil, rect: r, merged: Array(keep..<sizes.count).filter { sizes[$0] > 0 }))
-            }
+            var out = kept.enumerated().map { TreemapRect(index: $1, rect: rects[$0]) }
+            if mergedSize > 0, let r = rects.last { out.append(TreemapRect(index: nil, rect: r, merged: merged)) }
             return out
         }
     }

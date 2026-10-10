@@ -61,6 +61,8 @@ public final class TreeStore: @unchecked Sendable {
     var ruleID: [UInt16] = []
     var pendingChildren: [Int32] = []
     var projectFlags: [Bool] = []
+    /// Number of folders that returned permission denied.
+    public private(set) var restrictedCount = 0
     /// Bumped on every mutation so observers can poll cheaply.
     public private(set) var version: UInt64 = 0
 
@@ -219,6 +221,7 @@ public final class TreeStore: @unchecked Sendable {
         lock.withLock {
             let id = node.raw
             let wasPending = state[Int(id)] == .pending
+            if kind[Int(id)] != .restricted { restrictedCount += 1 }
             kind[Int(id)] = .restricted
             state[Int(id)] = .complete
             if wasPending, parent[Int(id)] >= 0 { childCompleted(parent[Int(id)]) }

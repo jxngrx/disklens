@@ -64,3 +64,13 @@ struct SquarifyTests {
         #expect(t < .milliseconds(100))
     }
 }
+
+struct UnsortedLayoutTests {
+    /// Nearly-sorted order (stable order during a scan) must not merge big items, and must keep input order.
+    @Test func nearlySortedInputKeepsBigItems() {
+        let sizes: [Double] = [150, 185, 28, 12, 0.002, 6, 2, 0.007]
+        let rects = Squarify.layout(sizes: sizes, in: CGRect(x: 0, y: 0, width: 1000, height: 640))
+        #expect(rects.compactMap(\.index) == [0, 1, 2, 3, 5, 6])
+        #expect(rects.last?.merged == [4, 7])
+    }
+}

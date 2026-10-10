@@ -7,14 +7,15 @@ struct TreemapView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let animating = model.zoom != nil || model.boxes.contains { $0.node.map { $0.state != .complete } ?? false }
+            let animating = model.zoom != nil || model.resizing || model.boxes.contains { $0.node.map { $0.state != .complete } ?? false }
             TimelineView(.animation(minimumInterval: 1 / 60, paused: !animating)) { tl in
                 Canvas(rendersAsynchronously: false) { ctx, size in
                     TreemapRenderer.draw(&ctx, size: size, boxes: model.boxes, hovered: model.hovered?.id,
-                                         zoom: model.zoom, now: tl.date)
+                                         zoom: model.zoom, now: tl.date, layoutAt: model.layoutAt)
                 }
                 .onChange(of: tl.date) {
                     if let z = model.zoom, tl.date.timeIntervalSince(z.start) > Zoom.duration { model.zoom = nil }
+                    if model.resizing, tl.date.timeIntervalSince(model.layoutAt) > TreemapRenderer.resizeDuration { model.resizing = false }
                 }
             }
             .onAppear { model.canvasSize = geo.size }
@@ -50,7 +51,10 @@ enum TreemapRenderer {
     static let gap: CGFloat = 2
     static let radius: CGFloat = 6
 
-    static func draw(_ ctx: inout GraphicsContext, size: CGSize, boxes: [Box], hovered: Int32?, zoom: Zoom?, now: Date) {
+    static let resizeDuration = 0.2
+
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, boxes: [Box], hovered: Int32?, zoom: Zoom?, now: Date,
+                     layoutAt: Date = .distantPast) {
         let bounds = CGRect(origin: .zero, size: size)
         if let z = zoom {
             let t = min(1, max(0, now.timeIntervalSince(z.start) / Zoom.duration))
@@ -64,8 +68,17 @@ enum TreemapRenderer {
         }
         let phase = now.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6
 
+        // Size changes between layouts ease from the old rect to the new one.
+        let k = min(1, max(0, now.timeIntervalSince(layoutAt) / resizeDuration))
+        let ease = 1 - pow(1 - k, 2)
+
         for box in boxes {
-            let r = box.rect.insetBy(dx: gap / 2, dy: gap / 2)
+            var full = box.rect
+            if let f = box.from, ease < 1 {
+                full = CGRect(x: f.minX + (full.minX - f.minX) * ease, y: f.minY + (full.minY - f.minY) * ease,
+                              width: f.width + (full.width - f.width) * ease, height: f.height + (full.height - f.height) * ease)
+            }
+            let r = full.insetBy(dx: gap / 2, dy: gap / 2)
             guard r.width > 0.5, r.height > 0.5 else { continue }
             let corner = min(radius, min(r.width, r.height) / 3)
             let shape = Path(roundedRect: r, cornerRadius: corner)
@@ -136,7 +149,7 @@ struct Tooltip: View {
                 if let n = box.node {
                     Text(n.name).font(.headline).lineLimit(1)
                     Text(model.path(n)).font(.caption).foregroundStyle(.secondary).lineLimit(2).truncationMode(.middle)
-                    Text("Allocated: \(sizeLabel(n))")
+                    Text("Allocated: \(n.state == .complete || n.kind == .restricted ? sizeLabel(n) : "at least " + formatBytes(n.totalBytes))")
                     Text("Items: \(n.fileCount.formatted()) files")
                     if n.modified > 0 {
                         Text("Modified: \(Date(timeIntervalSince1970: TimeInterval(n.modified)).formatted(date: .abbreviated, time: .shortened))")

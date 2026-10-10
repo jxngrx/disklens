@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 3
-- **Current task:** 3.1 priority queue
-- **Last updated:** 2026-10-10 23:19 IST
+- **Current phase:** 4
+- **Current task:** 4.1 rules.json
+- **Last updated:** 2026-10-10 23:22 IST
 
 ## Plan
 
@@ -38,15 +38,15 @@
 - [x] 2.12 Tag `phase-2-done`
 
 ### Phase 3 — Progressive + priority scan
-- [ ] 3.1 Priority queue actor (focus subtree first), re-prioritise on drill-in
-- [ ] 3.2 Streaming UI updates ≤10/s, stable order, "at least" labels for partial
-- [ ] 3.3 System & other box from volume capacity
-- [ ] 3.4 Full Disk Access banner for Restricted
-- [ ] 3.5 Check: first boxes in < 1 s (measured)
-- [ ] 3.6 Check: folder focused mid-scan finishes before unrelated folders
-- [ ] 3.7 Check: root total within 2% of Finder used space
-- [ ] 3.8 Screenshots `docs/screenshots/phase-3/`
-- [ ] 3.9 Tag `phase-3-done`
+- [x] 3.1 Priority queue actor (focus subtree first), re-prioritise on drill-in
+- [x] 3.2 Streaming UI updates ≤10/s, stable order, "at least" labels for partial
+- [x] 3.3 System & other box from volume capacity
+- [x] 3.4 Full Disk Access banner for Restricted
+- [x] 3.5 Check: first boxes in < 1 s (measured)
+- [x] 3.6 Check: folder focused mid-scan finishes before unrelated folders
+- [x] 3.7 Check: root total within 2% of Finder used space
+- [x] 3.8 Screenshots `docs/screenshots/phase-3/`
+- [x] 3.9 Tag `phase-3-done`
 
 ### Phase 4 — Rules, projects, quarantine
 - [ ] 4.1 `rules.json` (bundled resource) + loader + matcher
@@ -102,6 +102,7 @@
 - 2026-10-10 22:58 IST — 2.2 Squarified layout + smaller-items merge + hit test in `DiskLensCore/Layout/Squarify.swift`, tests in `SquarifyTests.swift`. First version was O(n²) (1.45 s for 5,000 items); fixed with O(1) worst-ratio and jump-ahead merge retry: 3.7 ms. Result: 6/6 pass.
 - 2026-10-10 23:18 IST — 2.1–2.11 App target via XcodeGen (`project.yml`, `App/`, `UITests/`), Canvas renderer, zoom, breadcrumb, back/parent keys + swipe, tooltip, context menu, sidebar, smaller-items sheet, legend, benchmark + self-test debug modes. Screenshots in docs/screenshots/phase-2/. Fixed after looking at screenshots: legend wrapping into 3-line labels (now ViewThatFits with dot fallback), second-level preview overlapping the label (now starts below it, tinted by child category), default window size. 2.10 XCUITest blocked (automation mode), see Blockers.
 - 2026-10-10 23:19 IST — 2.12 Tagged phase-2-done.
+- 2026-10-10 23:22 IST — 3.1–3.9 Priority queue (focus subtree tier, re-partition on drill-in) + test; bucketed stable order during scans; size changes ease between layouts (200 ms); System & other added on scan completion; Full Disk Access banner with restricted count. Screenshots in docs/screenshots/phase-3/. Bugs found from screenshots and fixed: (1) stable order fed unsorted sizes to a layout that assumed descending order, so one '8 smaller items' box swallowed the map — layout is now order-agnostic and the model only swaps items across ~41% size buckets; (2) the Canvas TimelineView paused mid-resize animation, freezing overlapping boxes — now a `resizing` flag keeps it running until the ease ends. Tagged phase-3-done.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -117,6 +118,8 @@
 - Quick Look uses `qlmanage -p` rather than a `QLPreviewPanel` controller.
 - UI test target compiles in Swift 5 mode (XCTest's non-isolated overrides fight Swift 6 strict concurrency); app and core use Swift 6.
 - Core type is `DiskScanner` (not `Scanner`) to avoid clashing with `Foundation.Scanner`.
+- System & other is computed once the scan completes. Updating it mid-scan made it a 185 GB box that shrank as the scan progressed, which reads as wrong; the root shows '≥ X' until then.
+- Stable order uses log-size buckets (two per doubling): siblings only swap when one outgrows the other by ~41%.
 
 ## Deviations from spec
 
@@ -129,6 +132,11 @@
 - `DiskLens -benchmark` (Release): 5,000 boxes through the real `TreemapRenderer`, fresh `ImageRenderer` each frame: avg 2.66 ms/frame (≈375 fps; worst 32 ms = first frame warm-up). Target 60 fps ✔.
 - `DiskLens -scanRoot <showcase fixture> -selftest` — 15/15 PASS: every folder box centre opens that folder, 3-level drill-down breadcrumb, zoom started, breadcrumb jump, back, parent.
 - `xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -derivedDataPath build/dd test` — XCUITests written (`UITests/NavigationUITests.swift`: click box drill-down, breadcrumb, Esc, ⌘[, ⌘↑, back button) but could not run: runner fails with "Timed out while enabling automation mode".
+### Phase 3
+- `swift test` — 14 passed (adds `PriorityTests.focusedFolderFinishesFirst`: 1 worker, two 160-folder trees; control run finds which tree finishes last, second run focuses it after 20 listings, and it then finishes first; `UnsortedLayoutTests`).
+- Real disk, Release app: first boxes after **0.100 s** (14 boxes) — target < 1 s ✔. Full app scan finishes in ~20 s.
+- Root total 230.33 GB vs volume used (total − available) 230.34 GB and Finder-style used (total − availableForImportantUsage) 230.06 GB → **0.12%** — target 2% ✔. Note: earlier I thought the scan over-counted by 7%; that was GiB (du) vs GB (ByteCountFormatter). Per-folder sizes match `du -sk`.
+- 458 folders restricted without Full Disk Access (banner shown).
 
 ## Blockers & workarounds
 - **XCUITest automation mode** (phase 2+): `xcodebuild test` fails with "The test runner failed to initialize for UI testing. (Underlying Error: Timed out while enabling automation mode.)". macOS wants an admin to authorise UI automation, and I may not use sudo. **You need to:** run `sudo automationmodetool enable-automationmode-without-authentication` once (or approve the prompt when running the tests from Xcode), then rerun the test command. Workaround: `DiskLens -selftest` drives the same model calls (hit test → activate, breadcrumb, back, parent) headlessly.

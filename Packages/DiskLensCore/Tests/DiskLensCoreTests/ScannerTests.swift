@@ -103,3 +103,61 @@ import Testing
         #expect(abs(Double(scanner.store.node(.root).totalBytes) - Double(Fixtures.duBytes(root.path))) < 64 * 1024)
     }
 }
+
+/// Records, per run, the listing index at which each top-level folder became complete.
+final class CompletionLog: @unchecked Sendable {
+    let lock = NSLock()
+    var listings = 0
+    var completedAt: [String: Int] = [:]
+}
+
+@Suite(.serialized) struct PriorityTests {
+    func makeTwoTrees() throws -> URL {
+        let root = try Fixtures.makeRoot("priority")
+        for top in ["A", "B"] {
+            for i in 0..<150 {
+                let d = root.appendingPathComponent("\(top)/d\(i % 10)/e\(i)")
+                try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+                FileManager.default.createFile(atPath: d.path + "/f", contents: Data(count: 10))
+            }
+        }
+        return root
+    }
+
+    /// Scans with 1 worker; after `switchAfter` listings, focuses `focusName` (if any).
+    func run(_ root: URL, focusName: String?, switchAfter: Int = 20) async -> [String: Int] {
+        let log = CompletionLog()
+        let box = ScannerBox()
+        var opts = ScanOptions()
+        opts.workers = 1
+        let scanner = DiskScanner(rootPath: root.path, options: opts) { store, _, _, _, _ in
+            log.lock.withLock {
+                log.listings += 1
+                for n in store.children(of: .root) where n.state == .complete && log.completedAt[n.name] == nil {
+                    log.completedAt[n.name] = log.listings
+                }
+                if log.listings == switchAfter, let f = focusName, let id = store.children(of: .root).first(where: { $0.name == f })?.id {
+                    let sem = DispatchSemaphore(value: 0)
+                    Task { await box.scanner?.setFocus(id); sem.signal() }
+                    sem.wait()
+                }
+            }
+        }
+        box.scanner = scanner
+        await scanner.run()
+        return log.completedAt
+    }
+
+    @Test func focusedFolderFinishesFirst() async throws {
+        let root = try makeTwoTrees()
+        defer { Fixtures.remove(root) }
+        let control = await run(root, focusName: nil)
+        let naturalLast = control["A"]! > control["B"]! ? "A" : "B"
+        let other = naturalLast == "A" ? "B" : "A"
+        // Focus the folder that would naturally finish last, mid-scan.
+        let focused = await run(root, focusName: naturalLast)
+        #expect(focused[naturalLast]! < focused[other]!, "control \(control), focused \(focused)")
+    }
+}
+
+final class ScannerBox: @unchecked Sendable { var scanner: DiskScanner? }
