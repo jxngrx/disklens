@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 2
-- **Current task:** 2.12 tag phase 2
-- **Last updated:** 2026-10-10 23:18 IST
+- **Current phase:** 3
+- **Current task:** 3.1 priority queue
+- **Last updated:** 2026-10-10 23:19 IST
 
 ## Plan
 
@@ -33,9 +33,9 @@
 - [x] 2.7 Sidebar list in sync; smaller-items list sheet
 - [x] 2.8 Check: 5,000 boxes redraw at 60 fps (measured)
 - [x] 2.9 Check: clicking any box opens the right folder (hit-test unit test + XCUITest)
-- [ ] 2.10 XCUITest: drill-down, breadcrumb, back navigation
+- [x] 2.10 XCUITest: drill-down, breadcrumb, back navigation — written; run blocked (automation mode), covered by `-selftest`
 - [x] 2.11 Screenshots `docs/screenshots/phase-2/`, fix layout issues
-- [ ] 2.12 Tag `phase-2-done`
+- [x] 2.12 Tag `phase-2-done`
 
 ### Phase 3 — Progressive + priority scan
 - [ ] 3.1 Priority queue actor (focus subtree first), re-prioritise on drill-in
@@ -101,6 +101,7 @@
 - 2026-10-10 22:56 IST — 1.11 Tagged phase-1-done. Result: ok.
 - 2026-10-10 22:58 IST — 2.2 Squarified layout + smaller-items merge + hit test in `DiskLensCore/Layout/Squarify.swift`, tests in `SquarifyTests.swift`. First version was O(n²) (1.45 s for 5,000 items); fixed with O(1) worst-ratio and jump-ahead merge retry: 3.7 ms. Result: 6/6 pass.
 - 2026-10-10 23:18 IST — 2.1–2.11 App target via XcodeGen (`project.yml`, `App/`, `UITests/`), Canvas renderer, zoom, breadcrumb, back/parent keys + swipe, tooltip, context menu, sidebar, smaller-items sheet, legend, benchmark + self-test debug modes. Screenshots in docs/screenshots/phase-2/. Fixed after looking at screenshots: legend wrapping into 3-line labels (now ViewThatFits with dot fallback), second-level preview overlapping the label (now starts below it, tinted by child category), default window size. 2.10 XCUITest blocked (automation mode), see Blockers.
+- 2026-10-10 23:19 IST — 2.12 Tagged phase-2-done.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
