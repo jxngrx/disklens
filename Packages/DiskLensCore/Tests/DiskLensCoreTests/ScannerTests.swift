@@ -8,7 +8,7 @@ import Testing
         let root = try Fixtures.makeRoot("du")
         defer { Fixtures.remove(root) }
         try Fixtures.makeTree(at: root, dirs: 120, filesPerDir: 8)
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let ours = Double(scanner.store.node(.root).totalBytes)
         let du = Double(Fixtures.duBytes(root.path))
@@ -33,7 +33,7 @@ import Testing
         // Links in a second folder too.
         try Fixtures.writeFile(root.appendingPathComponent("other/x.bin"), bytes: 4096)
         try FileManager.default.linkItem(at: target, to: root.appendingPathComponent("other/link-elsewhere.bin"))
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let total = scanner.store.node(.root).totalBytes
         let mb = Double(total) / Double(1 << 20)
@@ -48,7 +48,7 @@ import Testing
         try Fixtures.writeFile(root.appendingPathComponent("open/a.bin"), bytes: 2 << 20)
         try Fixtures.writeFile(root.appendingPathComponent("open/deeper/b.bin"), bytes: 10_000)
         chmod(root.appendingPathComponent("locked").path, 0o000)
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let kids = scanner.store.children(of: .root)
         #expect(kids.first { $0.name == "locked" }?.kind == .restricted)
@@ -62,7 +62,7 @@ import Testing
         defer { Fixtures.remove(root) }
         try Fixtures.writeFile(root.appendingPathComponent("real/big.bin"), bytes: 5 << 20)
         try FileManager.default.createSymbolicLink(atPath: root.path + "/alias", withDestinationPath: root.path + "/real")
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let total = Double(scanner.store.node(.root).totalBytes)
         #expect(total < Double(6 << 20))
@@ -73,7 +73,7 @@ import Testing
         defer { Fixtures.remove(root) }
         for i in 0..<60 { try Fixtures.writeFile(root.appendingPathComponent("s\(i).txt"), bytes: 100) }
         for i in 0..<3 { try Fixtures.writeFile(root.appendingPathComponent("big\(i).bin"), bytes: 2 << 20) }
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let kids = scanner.store.children(of: .root)
         #expect(kids.filter { $0.kind == .file }.count == 3)
@@ -86,7 +86,7 @@ import Testing
         let root = try Fixtures.makeRoot("rescan")
         defer { Fixtures.remove(root) }
         try Fixtures.writeFile(root.appendingPathComponent("a/b/one.bin"), bytes: 1 << 20)
-        let scanner = Scanner(rootPath: root.path)
+        let scanner = DiskScanner(rootPath: root.path)
         await scanner.run()
         let before = scanner.store.node(.root).totalBytes
         try Fixtures.writeFile(root.appendingPathComponent("a/b/two.bin"), bytes: 3 << 20)

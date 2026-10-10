@@ -45,6 +45,30 @@ public enum Fixtures {
         }
     }
 
+    /// Developer-machine-like tree for screenshots and UI tests (sizes in KB so it is quick to write).
+    public static func makeShowcase(at root: URL, scale: Int = 1024) throws {
+        let layout: [(String, Int)] = [
+            ("Projects/web-shop/node_modules/react/index.js", 9000), ("Projects/web-shop/node_modules/next/dist.js", 14000),
+            ("Projects/web-shop/node_modules/typescript/lib.js", 7000), ("Projects/web-shop/src/app.tsx", 40),
+            ("Projects/web-shop/package.json", 2), ("Projects/web-shop/.next/cache.bin", 6000),
+            ("Projects/MobileApp/ios/Pods/Firebase/lib.a", 12000), ("Projects/MobileApp/ios/build/app.o", 5000),
+            ("Projects/MobileApp/android/app/build/out.apk", 8000), ("Projects/MobileApp/android/.gradle/state.bin", 3000),
+            ("Projects/MobileApp/package.json", 2), ("Projects/MobileApp/ios/Podfile", 1), ("Projects/MobileApp/src/App.tsx", 30),
+            ("Projects/rust-tool/target/debug/tool", 11000), ("Projects/rust-tool/Cargo.toml", 1), ("Projects/rust-tool/src/main.rs", 20),
+            ("Library/Developer/Xcode/DerivedData/MobileApp-abc/Build.db", 22000),
+            ("Library/Developer/Xcode/DerivedData/Other-def/Index.db", 9000),
+            ("Library/Developer/Xcode/Archives/2026-01-01/App.xcarchive/bin", 6000),
+            ("Library/Caches/CocoaPods/pods.tar", 4000), ("Library/Caches/Homebrew/pkg.tar", 3000),
+            (".gradle/caches/modules/jar.bin", 15000), (".npm/_cacache/blob.bin", 5000),
+            ("Movies/holiday.mov", 26000), ("Movies/talk.mp4", 9000), ("Pictures/raw/img1.dng", 4000),
+            ("Pictures/raw/img2.dng", 4000), ("Music/album.flac", 6000),
+            ("Documents/report.pdf", 1500), ("Documents/notes/todo.txt", 10), ("Downloads/installer.dmg", 11000),
+            ("Applications/Editor.app/Contents/MacOS/Editor", 7000),
+        ]
+        for (rel, kb) in layout { try writeFile(root.appendingPathComponent(rel), bytes: kb * scale) }
+        for i in 0..<40 { try writeFile(root.appendingPathComponent("Documents/notes/n\(i).md"), bytes: (i + 1) * 3000) }
+    }
+
     /// Removes a fixture folder. Refuses anything outside `base`.
     public static func remove(_ url: URL) {
         let path = url.resolvingSymlinksInPath().path

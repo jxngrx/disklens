@@ -2,8 +2,8 @@
 
 ## Status
 - **Current phase:** 2
-- **Current task:** 2.1 XcodeGen project
-- **Last updated:** 2026-10-10 22:58 IST
+- **Current task:** 2.12 tag phase 2
+- **Last updated:** 2026-10-10 23:18 IST
 
 ## Plan
 
@@ -24,17 +24,17 @@
 - [x] 1.11 Tag `phase-1-done`
 
 ### Phase 2 — Treemap UI
-- [ ] 2.1 XcodeGen `project.yml`, app target + UI test target, builds with `xcodebuild`
+- [x] 2.1 XcodeGen `project.yml`, app target + UI test target, builds with `xcodebuild`
 - [x] 2.2 Squarified layout + "N smaller items" merge + second-level preview
-- [ ] 2.3 `Canvas` renderer: category colours, labels, badges, 2 pt gaps, 6 pt radius, partial shimmer
-- [ ] 2.4 Hit testing, click-to-drill with ~250 ms zoom animation
-- [ ] 2.5 Breadcrumb, back (Esc, ⌘[, swipe), ⌘↑ parent
-- [ ] 2.6 Hover tooltip (path, size, count, modified, git date), right-click menu
-- [ ] 2.7 Sidebar list in sync; smaller-items list sheet
-- [ ] 2.8 Check: 5,000 boxes redraw at 60 fps (measured)
-- [ ] 2.9 Check: clicking any box opens the right folder (hit-test unit test + XCUITest)
+- [x] 2.3 `Canvas` renderer: category colours, labels, badges, 2 pt gaps, 6 pt radius, partial shimmer
+- [x] 2.4 Hit testing, click-to-drill with ~250 ms zoom animation
+- [x] 2.5 Breadcrumb, back (Esc, ⌘[, swipe), ⌘↑ parent
+- [x] 2.6 Hover tooltip (path, size, count, modified, git date), right-click menu
+- [x] 2.7 Sidebar list in sync; smaller-items list sheet
+- [x] 2.8 Check: 5,000 boxes redraw at 60 fps (measured)
+- [x] 2.9 Check: clicking any box opens the right folder (hit-test unit test + XCUITest)
 - [ ] 2.10 XCUITest: drill-down, breadcrumb, back navigation
-- [ ] 2.11 Screenshots `docs/screenshots/phase-2/`, fix layout issues
+- [x] 2.11 Screenshots `docs/screenshots/phase-2/`, fix layout issues
 - [ ] 2.12 Tag `phase-2-done`
 
 ### Phase 3 — Progressive + priority scan
@@ -100,6 +100,7 @@
 - 2026-10-10 22:58 — 1.10 Real-disk read-only scan (release): 1,801,917 files, 831,243 nodes, 12.07 s, 174 MB max RSS. Result: ok (see Test results).
 - 2026-10-10 22:56 IST — 1.11 Tagged phase-1-done. Result: ok.
 - 2026-10-10 22:58 IST — 2.2 Squarified layout + smaller-items merge + hit test in `DiskLensCore/Layout/Squarify.swift`, tests in `SquarifyTests.swift`. First version was O(n²) (1.45 s for 5,000 items); fixed with O(1) worst-ratio and jump-ahead merge retry: 3.7 ms. Result: 6/6 pass.
+- 2026-10-10 23:18 IST — 2.1–2.11 App target via XcodeGen (`project.yml`, `App/`, `UITests/`), Canvas renderer, zoom, breadcrumb, back/parent keys + swipe, tooltip, context menu, sidebar, smaller-items sheet, legend, benchmark + self-test debug modes. Screenshots in docs/screenshots/phase-2/. Fixed after looking at screenshots: legend wrapping into 3-line labels (now ViewThatFits with dot fallback), second-level preview overlapping the label (now starts below it, tinted by child category), default window size. 2.10 XCUITest blocked (automation mode), see Blockers.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -110,6 +111,11 @@
 - One `NSLock` around the whole TreeStore (simple, measured fine for 8 workers).
 - Detached nodes (deleted folders) stay in the arrays as garbage until the next snapshot save.
 - Squarify + hit testing live in DiskLensCore (`Layout/`) instead of `App/Treemap` so `swift test` covers them without an app test bundle.
+- Debug launch modes instead of extra test bundles: `-benchmark` (5,000-box render timing), `-selftest` (navigation checks), `-scanRoot`, `-openPath`, `-hoverName` (screenshot helpers). All read-only.
+- Store changes reach the UI by a 10 Hz poll of `TreeStore.version` (spec: layout at most ~10/s) instead of notifications from worker threads.
+- Quick Look uses `qlmanage -p` rather than a `QLPreviewPanel` controller.
+- UI test target compiles in Swift 5 mode (XCTest's non-isolated overrides fight Swift 6 strict concurrency); app and core use Swift 6.
+- Core type is `DiskScanner` (not `Scanner`) to avoid clashing with `Foundation.Scanner`.
 
 ## Deviations from spec
 
@@ -117,8 +123,14 @@
 ### Phase 1
 - `cd Packages/DiskLensCore && swift test` — 6 passed, 0 failed (du within 1%, 10 hard links = 100 MB once, restricted + scan continues, symlinks not followed, small-file folding, rescan diff).
 - `swift build -c release && /usr/bin/time -l .build/release/disklens top /` — 1.80 M files in 12.07 s (target: 1 M files < 30 s ✔), 174 MB max RSS for 1.8 M files (extrapolates to ~290 MB at 3 M; target < 300 MB, tight). 457 restricted folders (Terminal lacks Full Disk Access).
+### Phase 2
+- `swift test --filter Squarify` — 6 passed: proportional areas, aspect ratio < 4, merge by fraction, merge by 24 pt side, hit test of every box centre (5,000 items), layout of 5,000 items 3.7 ms (debug).
+- `DiskLens -benchmark` (Release): 5,000 boxes through the real `TreemapRenderer`, fresh `ImageRenderer` each frame: avg 2.66 ms/frame (≈375 fps; worst 32 ms = first frame warm-up). Target 60 fps ✔.
+- `DiskLens -scanRoot <showcase fixture> -selftest` — 15/15 PASS: every folder box centre opens that folder, 3-level drill-down breadcrumb, zoom started, breadcrumb jump, back, parent.
+- `xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -derivedDataPath build/dd test` — XCUITests written (`UITests/NavigationUITests.swift`: click box drill-down, breadcrumb, Esc, ⌘[, ⌘↑, back button) but could not run: runner fails with "Timed out while enabling automation mode".
 
 ## Blockers & workarounds
+- **XCUITest automation mode** (phase 2+): `xcodebuild test` fails with "The test runner failed to initialize for UI testing. (Underlying Error: Timed out while enabling automation mode.)". macOS wants an admin to authorise UI automation, and I may not use sudo. **You need to:** run `sudo automationmodetool enable-automationmode-without-authentication` once (or approve the prompt when running the tests from Xcode), then rerun the test command. Workaround: `DiskLens -selftest` drives the same model calls (hit test → activate, breadcrumb, back, parent) headlessly.
 
 ## Questions for review
 

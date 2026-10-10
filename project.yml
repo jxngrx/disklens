@@ -1,0 +1,61 @@
+name: DiskLens
+options:
+  bundleIdPrefix: com.disklens
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  DiskLensCore:
+    path: Packages/DiskLensCore
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  DiskLens:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: DiskLensCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.disklens.app
+        PRODUCT_NAME: DiskLens
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: DiskLens
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+      configs:
+        Release:
+          ARCHS: "$(ARCHS_STANDARD)"
+          ONLY_ACTIVE_ARCH: NO
+  DiskLensUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: DiskLens
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.disklens.uitests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: DiskLens
+schemes:
+  DiskLens:
+    build:
+      targets:
+        DiskLens: all
+        DiskLensUITests: [test]
+    test:
+      targets: [DiskLensUITests]
+    run:
+      config: Debug

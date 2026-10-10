@@ -21,6 +21,12 @@ public struct NodeInfo: Identifiable, Hashable, Sendable {
     public var ruleID: UInt16
     public var hasChildren: Bool
     public var isDirectory: Bool { kind == .dir || kind == .bundle }
+
+    public init(id: NodeID, name: String, kind: NodeKind, totalBytes: UInt64, fileCount: UInt32 = 0,
+                modified: Int64 = 0, state: ScanState = .complete, ruleID: UInt16 = 0, hasChildren: Bool = false) {
+        self.id = id; self.name = name; self.kind = kind; self.totalBytes = totalBytes; self.fileCount = fileCount
+        self.modified = modified; self.state = state; self.ruleID = ruleID; self.hasChildren = hasChildren
+    }
 }
 
 /// Result of listing one directory, already deduped and folded by the scanner.

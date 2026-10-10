@@ -80,7 +80,7 @@ public struct ScanOptions: Sendable {
 public typealias ListingHook = @Sendable (_ store: TreeStore, _ dir: NodeID, _ path: String,
                                           _ entries: [DirEntry], _ newDirs: [NodeID]) -> Void
 
-public final class Scanner: Sendable {
+public final class DiskScanner: Sendable {
     public let store: TreeStore
     public let options: ScanOptions
     let queue: ScanQueue
