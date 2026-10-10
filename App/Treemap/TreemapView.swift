@@ -9,9 +9,13 @@ struct TreemapView: View {
         GeometryReader { geo in
             let animating = model.zoom != nil || model.resizing || model.boxes.contains { $0.node.map { $0.state != .complete } ?? false }
             TimelineView(.animation(minimumInterval: 1 / 60, paused: !animating)) { tl in
+                // Wall-clock time, not `tl.date`: while the timeline is paused its date is stale, and a redraw
+                // with it would freeze boxes mid-animation.
+                let (zoom, layoutAt, resizing) = (model.zoom, model.layoutAt, model.resizing)
                 Canvas(rendersAsynchronously: false) { ctx, size in
+                    _ = resizing
                     TreemapRenderer.draw(&ctx, size: size, boxes: model.boxes, hovered: model.hovered?.id,
-                                         zoom: model.zoom, now: tl.date, layoutAt: model.layoutAt)
+                                         zoom: zoom, now: Date(), layoutAt: layoutAt)
                 }
                 .onChange(of: tl.date) {
                     if let z = model.zoom, tl.date.timeIntervalSince(z.start) > Zoom.duration { model.zoom = nil }
@@ -93,7 +97,8 @@ enum TreemapRenderer {
             }
 
             // Faint second level.
-            for p in box.preview {
+            // Previews use the final layout, so skip them while the box is still easing.
+            for p in (box.from != nil && ease < 1 ? [] : box.preview) {
                 let pr = Path(roundedRect: p.rect.insetBy(dx: 1, dy: 1), cornerRadius: 3)
                 if p.category != box.category { ctx.fill(pr, with: .color(p.category.color.opacity(0.45))) }
                 ctx.stroke(pr, with: .color(.white.opacity(0.16)), lineWidth: 1)

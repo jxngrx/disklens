@@ -103,20 +103,22 @@ public final class LiveIndex: @unchecked Sendable {
             // Pending folders get scanned anyway.
             if let id = nearestDir(d), store.node(id).state != .pending { relist.insert(id) }
         }
-        var reset: [NodeID] = []
-        for s in subtrees {
-            if let id = nearestDir(s) { reset.append(id) }
-        }
+        // MustScanSubDirs / dropped events: relist every folder of the subtree in place. Sizes stay on
+        // screen (no reset to "pending") and only real differences are applied.
+        var subtreeRoots: [NodeID] = subtrees.compactMap { nearestDir($0) }
         if lock.withLock({ _needsFullRescan }) {
             lock.withLock { _needsFullRescan = false }
-            reset = [.root]
+            subtreeRoots = [.root]
         }
-        guard !relist.isEmpty || !reset.isEmpty else { return }
+        guard !relist.isEmpty || !subtreeRoots.isEmpty else { return }
+        if !subtreeRoots.isEmpty {
+            NSLog("DiskLens: relisting subtrees %@", subtreeRoots.map { store.path(of: $0) }.joined(separator: ", "))
+        }
         let scanner = self.scanner
         let done = onChange
         Task.detached {
-            for id in reset { scanner.store.resetSubtree(id) }
-            await scanner.rescan(Array(relist) + reset)
+            let all = Array(relist) + subtreeRoots.flatMap { scanner.store.directories(in: $0) }
+            await scanner.rescan(Array(Set(all)))
             scanner.updateSystemOther()
             done?()
         }

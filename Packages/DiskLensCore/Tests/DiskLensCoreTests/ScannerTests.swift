@@ -161,3 +161,18 @@ final class CompletionLog: @unchecked Sendable {
 }
 
 final class ScannerBox: @unchecked Sendable { var scanner: DiskScanner? }
+
+struct SystemOtherTests {
+    @Test func relistingRootKeepsSystemOther() async throws {
+        let root = try Fixtures.makeRoot("sysother")
+        defer { Fixtures.remove(root) }
+        try Fixtures.writeFile(root.appendingPathComponent("a/x.bin"), bytes: 1 << 20)
+        let scanner = DiskScanner(rootPath: root.path)
+        await scanner.run()
+        scanner.store.setSystemOther(bytes: 5 << 20)
+        let total = scanner.store.node(.root).totalBytes
+        await scanner.rescan([.root])
+        #expect(scanner.store.children(of: .root).contains { $0.kind == .systemOther })
+        #expect(scanner.store.node(.root).totalBytes == total)
+    }
+}

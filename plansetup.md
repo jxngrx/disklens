@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 5
-- **Current task:** 5.1 binary snapshot
-- **Last updated:** 2026-10-10 23:33 IST
+- **Current phase:** 6
+- **Current task:** 6.1 restore buttons
+- **Last updated:** 2026-10-10 23:40 IST
 
 ## Plan
 
@@ -64,15 +64,15 @@
 - [x] 4.13 Tag `phase-4-done`
 
 ### Phase 5 — Live updates + saved index
-- [ ] 5.1 Binary snapshot write/read (memory-mapped) with FSEvents id + volume UUID
-- [ ] 5.2 Launch from snapshot with "updated X ago" label
-- [ ] 5.3 FSEvents catch-up since saved id; full rescan fallback
-- [ ] 5.4 Live FSEventStream, coalescing, directory rescan with diff roll-up, MustScanSubDirs
-- [ ] 5.5 Ignore own writes; instant subtract after clean
-- [ ] 5.6 Check: relaunch shows map in < 1 s
-- [ ] 5.7 Check: 1 GB file in watched folder updates within 3 s
-- [ ] 5.8 Screenshots `docs/screenshots/phase-5/`
-- [ ] 5.9 Tag `phase-5-done`
+- [x] 5.1 Binary snapshot write/read (memory-mapped) with FSEvents id + volume UUID
+- [x] 5.2 Launch from snapshot with "updated X ago" label
+- [x] 5.3 FSEvents catch-up since saved id; full rescan fallback
+- [x] 5.4 Live FSEventStream, coalescing, directory rescan with diff roll-up, MustScanSubDirs
+- [x] 5.5 Ignore own writes; instant subtract after clean
+- [x] 5.6 Check: relaunch shows map in < 1 s
+- [x] 5.7 Check: 1 GB file in watched folder updates within 3 s
+- [x] 5.8 Screenshots `docs/screenshots/phase-5/`
+- [x] 5.9 Tag `phase-5-done`
 
 ### Phase 6 — Pro and CLI
 - [ ] 6.1 Restore buttons (npm ci / yarn / pnpm / pod install) — dry-run tested
@@ -105,6 +105,7 @@
 - 2026-10-10 23:22 IST — 3.1–3.9 Priority queue (focus subtree tier, re-partition on drill-in) + test; bucketed stable order during scans; size changes ease between layouts (200 ms); System & other added on scan completion; Full Disk Access banner with restricted count. Screenshots in docs/screenshots/phase-3/. Bugs found from screenshots and fixed: (1) stable order fed unsorted sizes to a layout that assumed descending order, so one '8 smaller items' box swallowed the map — layout is now order-agnostic and the model only swaps items across ~41% size buckets; (2) the Canvas TimelineView paused mid-resize animation, freezing overlapping boxes — now a `resizing` flag keeps it running until the ease ends. Tagged phase-3-done.
 - 2026-10-10 23:25 IST — 4.1/4.2/4.4/4.5/4.9/4.10 Core: `Rules/rules.json` (15 rules + project markers + artifact folders), `Rules/Rules.swift` (RuleSet loader, fnmatch matcher that re-checks the file system, keep-newest-N, project ownership, scanner hook), `Rules/Projects.swift` (collect, last-worked-on, restore command), `Cleaner/Quarantine.swift` (same-volume rename + JSON manifest, restore, purge, empty now), `Cleaner/Cleaner.swift` (CommandRunner with dry-run, running-tool probes, plan/execute with re-check). Tests `CleanerTests.swift`: 6 new, all pass (20/20 total).
 - 2026-10-10 23:33 IST — 4.3–4.13 App: cleanable outline + safety badges, Clean… context item, confirm sheet (quarantine vs tool command, running-tool warnings with Quit), Projects sheet (reclaimable, last worked on, 30+ day filter, Clean Selected), Quarantine sheet (Restore, Empty Now), purge on launch, license/trial stub in Settings, clean message bar with Undo. CLI: `rules`, `clean`, `quarantine`. UI tests now run (automation mode became available) — all 3 pass after forcing the sidebar visible. Screenshot fixes: tooltip lingering under sheets (hover ignored while a sheet is up), sheet title, artifact names relative to project, '1 files', badge hiding the label on narrow boxes. Tagged phase-4-done.
+- 2026-10-10 23:40 IST — 5.1–5.9 `Tree/Snapshot.swift` (compacting BFS binary format, mmap load), `Watcher/Watcher.swift` (FSEventStream file events 1 s latency, coalescer), `Watcher/LiveIndex.swift` (open from snapshot if root + FSEvents volume UUID match, replay since saved event id, live updates, subtree relist, ignore own index/quarantine, save after scan / every 5 min / on quit). App: status 'Index from X ago · catching up…' → 'Live · index saved X ago'. Bugs found from screenshots and fixed: (1) relisting '/' dropped the System & other node; (2) Canvas redrew with the paused timeline's stale date, freezing boxes mid-animation (now wall clock); (3) MustScanSubDirs reset whole subtrees to pending, so the map fell to '≥ 60 GB' — now subtrees are relisted in place and the old map stays visible; (4) restricted count double-counted after resets. Tagged phase-5-done.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -129,6 +130,9 @@
 - `CommandRunner` runs tools via `/usr/bin/env` with Homebrew/Android paths appended; `DISKLENS_DRY_RUN=1` forces dry-run everywhere.
 - License/trial is a local stub (14-day trial in UserDefaults, `DL-XXXX-XXXX-CCCC` checksum keys). Pro gating applies to phase 6 features.
 - Projects / Quarantine / Clean are sheets on the main window, not separate windows (fewer scenes, simpler state).
+- Snapshot stores only complete trees and is compacted (detached nodes dropped, BFS order). Hard-link ownership is not persisted: after a relaunch, a rescanned folder may count a hard link already counted elsewhere (ponytail note in LiveIndex era; acceptable drift until the next full scan).
+- Index lost detection uses the FSEvents volume UUID + `EventIdsWrapped`/`RootChanged` flags; then all folders are relisted in place while the old map stays visible.
+- Fixture scans keep their index in `$TMPDIR/disklens-fixtures/.indexes/`; `-indexDir` overrides.
 
 ## Deviations from spec
 
@@ -151,10 +155,16 @@
 - `DiskLens -scanRoot <fixture> -rulesHome <fixture> -quarantineRoot <fixture>/q -dryRun YES -selftest` — 26/26 PASS (adds: artifact tagged, confirm plan, project folder refused, moved out, instant subtract, quarantine item, restored, size back after rescan).
 - `xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -derivedDataPath build/dd test` — **3/3 UI tests pass**: NavigationUITests.testClickBoxDrillsIntoRightFolder, testBreadcrumbAndBack (breadcrumb, Esc, ⌘[, ⌘↑, back button), CleanSheetUITests.testConfirmSheetCancelThenClean (right-click → Clean… → sheet → Cancel keeps files → Clean quarantines; dry-run env, fixture quarantine).
 - CLI on fixture: `disklens clean <DerivedData/Other-def> <rust-tool/target> <.npm> --dry-run --rules-home F --quarantine-root Q` → 2 quarantined, npm command only logged.
+### Phase 5
+- `swift test` — 26 passed (adds snapshot round trip incl. compaction, coalescer, 1 M-node load, 1 GB live update, catch-up from snapshot, System & other kept on relist).
+- `swift test -c release -Xswiftc -enable-testing --filter 'SnapshotTests|LiveUpdateTests'`: 1 M-node snapshot save 0.57 s, **load 0.108 s**, 83 MB file; **1 GB file reflected 0.17 s after the write finished** (write itself 0.53 s; FSEvents latency 1 s from first event) — target 3 s ✔.
+- Real disk relaunch (Release app, 54.5 MB `index-root.bin`, ~830 k nodes): **first boxes 0.349 s after process start** (0.027 s after model start) — target 1 s ✔. Fresh launch without index: first boxes 0.788 s after process start (0.101 s after scan start).
+- Catch-up after relaunch kept the map stable (no subtree reset, 458 restricted, root total unchanged).
 
 ## Blockers & workarounds
 - **XCUITest automation mode** (phase 2+): `xcodebuild test` fails with "The test runner failed to initialize for UI testing. (Underlying Error: Timed out while enabling automation mode.)". macOS wants an admin to authorise UI automation, and I may not use sudo. **You need to:** run `sudo automationmodetool enable-automationmode-without-authentication` once (or approve the prompt when running the tests from Xcode), then rerun the test command. Workaround: `DiskLens -selftest` drives the same model calls (hit test → activate, breadcrumb, back, parent) headlessly.
 - Update (phase 4): XCUITest automation mode started working on a later run (approved/enabled outside this session, or the first-run timeout was transient). All UI tests now run; the `-selftest` fallback stays as a fast headless check.
+- Screenshot runs launch the app in front of whatever you are doing; one capture ended up drilled into your home folder (a click landed on the window). No files were touched; noted so you know why the app may have flashed on screen.
 
 ## Questions for review
 

@@ -134,6 +134,7 @@ public final class TreeStore: @unchecked Sendable {
             }
         }
         // ponytail: detached nodes stay in the arrays as garbage; compact on snapshot save.
+        if kind[Int(id)] == .restricted { restrictedCount -= 1 }
         rollUp(from: p, bytes: -Int64(totalBytes[Int(id)]), files: -Int64(fileCount[Int(id)]))
         if state[Int(id)] != .complete && (kind[Int(id)] == .dir || kind[Int(id)] == .bundle) {
             childCompleted(p)
@@ -154,6 +155,7 @@ public final class TreeStore: @unchecked Sendable {
                 let next = nextSibling[Int(c)]
                 switch kind[Int(c)] {
                 case .file, .otherFiles: unlinkLeaf(c)
+                case .systemOther: break // not part of any listing; kept by updateSystemOther
                 default: oldDirs[name[Int(c)]] = c
                 }
                 c = next
@@ -370,6 +372,21 @@ public final class TreeStore: @unchecked Sendable {
         var i = id
         while i > 0 { i = parent[Int(i)] }
         return i == 0
+    }
+
+    /// Every directory node in the subtree (including `id`), parents first.
+    public func directories(in id: NodeID) -> [NodeID] {
+        lock.withLock {
+            var out: [NodeID] = []
+            var stack = [id.raw]
+            while let i = stack.popLast() {
+                guard kind[Int(i)] == .dir || kind[Int(i)] == .bundle || kind[Int(i)] == .restricted else { continue }
+                out.append(NodeID(i))
+                var c = firstChild[Int(i)]
+                while c >= 0 { stack.append(c); c = nextSibling[Int(c)] }
+            }
+            return out
+        }
     }
 
     public func isProject(_ id: NodeID) -> Bool { lock.withLock { projectFlags[Int(id.raw)] } }

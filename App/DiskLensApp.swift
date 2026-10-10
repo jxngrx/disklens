@@ -54,7 +54,7 @@ struct ContentView: View {
                 HStack {
                     LegendBar()
                     Spacer(minLength: 12)
-                    Text(model.scanning ? "Scanning…" : "Scan complete").font(.caption).foregroundStyle(.secondary)
+                    Text(model.statusText).font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("scan-status")
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)

@@ -25,7 +25,8 @@ struct Zoom {
 
 @MainActor @Observable
 final class AppModel {
-    let scanner: DiskScanner
+    let index: LiveIndex
+    var scanner: DiskScanner { index.scanner }
     let rules: RuleSet
     let cleaner: Cleaner
     var store: TreeStore { scanner.store }
@@ -71,21 +72,37 @@ final class AppModel {
         let days = d.integer(forKey: "retentionDays")
         cleaner = Cleaner(rules: rules, quarantine: Quarantine(root: qRoot, retentionDays: days > 0 ? days : 7),
                           runner: CommandRunner(dryRun: d.bool(forKey: "dryRun") || ProcessInfo.processInfo.environment["DISKLENS_DRY_RUN"] == "1"))
-        scanner = DiskScanner(rootPath: rootPath, options: rootPath == "/" ? .startupVolume : ScanOptions(), hook: rules.listingHook())
+        // Fixture scans keep their index next to the fixtures instead of in Application Support.
+        let indexURL: URL? = d.string(forKey: "indexDir").map { URL(fileURLWithPath: $0).appendingPathComponent("index.bin") }
+            ?? (rootPath.contains("/disklens-fixtures/")
+                ? Fixtures.base.appendingPathComponent(".indexes/\(LiveIndex.defaultSnapshotURL(for: rootPath).lastPathComponent)") : nil)
+        index = LiveIndex(rootPath: rootPath, options: rootPath == "/" ? .startupVolume : ScanOptions(), hook: rules.listingHook(),
+                          snapshotURL: indexURL, ignore: [qRoot.path])
     }
+
+    /// "Index from 2 h ago · catching up…", "Live", "Scanning…", "Scan complete".
+    var statusText: String {
+        if let meta = index.loaded {
+            let age = meta.savedAt.formatted(.relative(presentation: .named))
+            return caughtUp ? "Live · index saved \(age)" : "Index from \(age) · catching up…"
+        }
+        return scanning ? "Scanning…" : "Scan complete"
+    }
+    private(set) var caughtUp = false
+    private var lastSave = Date()
 
     /// `openPath` (launch argument `-openPath`) drills into that folder once it has been listed.
     func start(openPath: String? = nil) {
-        let scanner = self.scanner
+        let index = self.index
         scanStarted = Date()
+        if index.loaded != nil { scanning = false }
         let quarantine = cleaner.quarantine
         Task.detached(priority: .utility) {
             // Items past the retention window are deleted for real (only inside the quarantine folder).
             quarantine.purge()
         }
         Task.detached(priority: .userInitiated) {
-            await scanner.run()
-            scanner.updateSystemOther()
+            await index.start()
             await MainActor.run {
                 self.scanning = false
                 if let p = openPath, let id = self.store.find(path: p) { self.jump(to: id) }
@@ -105,7 +122,19 @@ final class AppModel {
         }
         // ponytail: 10 Hz poll of the store version instead of change notifications from workers.
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            MainActor.assumeIsolated { self.refresh() }
+            MainActor.assumeIsolated {
+                self.refresh()
+                if !self.caughtUp, self.index.caughtUp { self.caughtUp = true }
+                // Keep the saved index fresh while live (cheap: a few hundred ms for a million nodes).
+                if !self.scanning, Date().timeIntervalSince(self.lastSave) > 300 {
+                    self.lastSave = Date()
+                    let index = self.index
+                    Task.detached(priority: .background) { try? index.save() }
+                }
+            }
+        }
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
+            try? index.save()
         }
     }
 
@@ -191,7 +220,8 @@ final class AppModel {
         crumbs = store.ancestry(of: current).map { store.node($0) }
         if firstBoxesAt == nil, !kids.isEmpty {
             firstBoxesAt = Date().timeIntervalSince(scanStarted)
-            NSLog("DiskLens first boxes after %.3f s (%d boxes)", firstBoxesAt!, kids.count)
+            NSLog("DiskLens first boxes after %.3f s (%d boxes, %.3f s since process start, from snapshot: %@)",
+                  firstBoxesAt!, kids.count, Date().timeIntervalSince(processStart), index.loaded == nil ? "no" : "yes")
         }
         restrictedCount = store.restrictedCount
         relayout(animated: true)
@@ -346,3 +376,13 @@ enum Shell {
         return p.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil
     }
 }
+
+/// Process start time (for launch-to-first-boxes measurements).
+let processStart: Date = {
+    var info = kinfo_proc()
+    var size = MemoryLayout<kinfo_proc>.size
+    var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+    sysctl(&mib, 4, &info, &size, nil, 0)
+    let t = info.kp_proc.p_starttime
+    return Date(timeIntervalSince1970: Double(t.tv_sec) + Double(t.tv_usec) / 1e6)
+}()
