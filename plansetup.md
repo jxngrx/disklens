@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 7
-- **Current task:** 7.1 final review
-- **Last updated:** 2026-10-10 23:52 IST
+- **Current phase:** done
+- **Current task:** all phases complete — awaiting review
+- **Last updated:** 2026-10-10 23:53 IST
 
 ## Plan
 
@@ -85,7 +85,7 @@
 - [x] 6.8 Tag `phase-6-done`
 
 ### Wrap-up
-- [ ] 7.1 Final review section
+- [x] 7.1 Final review section
 
 ## Progress log
 - 2026-10-10 22:52 — 0.1 Read SPEC.md (renamed `spec.md` → `SPEC.md` to match the docs), created plansetup.md, `git init`, started `brew install xcodegen`. Files: plansetup.md. Result: ok.
@@ -107,6 +107,7 @@
 - 2026-10-10 23:33 IST — 4.3–4.13 App: cleanable outline + safety badges, Clean… context item, confirm sheet (quarantine vs tool command, running-tool warnings with Quit), Projects sheet (reclaimable, last worked on, 30+ day filter, Clean Selected), Quarantine sheet (Restore, Empty Now), purge on launch, license/trial stub in Settings, clean message bar with Undo. CLI: `rules`, `clean`, `quarantine`. UI tests now run (automation mode became available) — all 3 pass after forcing the sidebar visible. Screenshot fixes: tooltip lingering under sheets (hover ignored while a sheet is up), sheet title, artifact names relative to project, '1 files', badge hiding the label on narrow boxes. Tagged phase-4-done.
 - 2026-10-10 23:40 IST — 5.1–5.9 `Tree/Snapshot.swift` (compacting BFS binary format, mmap load), `Watcher/Watcher.swift` (FSEventStream file events 1 s latency, coalescer), `Watcher/LiveIndex.swift` (open from snapshot if root + FSEvents volume UUID match, replay since saved event id, live updates, subtree relist, ignore own index/quarantine, save after scan / every 5 min / on quit). App: status 'Index from X ago · catching up…' → 'Live · index saved X ago'. Bugs found from screenshots and fixed: (1) relisting '/' dropped the System & other node; (2) Canvas redrew with the paused timeline's stale date, freezing boxes mid-animation (now wall clock); (3) MustScanSubDirs reset whole subtrees to pending, so the map fell to '≥ 60 GB' — now subtrees are relisted in place and the old map stays visible; (4) restricted count double-counted after resets. Tagged phase-5-done.
 - 2026-10-10 23:52 IST — 6.1–6.8 Core: `Cleaner/MobilePack.swift` (AVDs, system images with AVD usage, NDKs with project ndkVersion usage, simctl runtimes with device usage, unavailable simulators; simctl injectable), `Cleaner/Policy.swift` (KeepFreePolicy: oldest quarantine → tool commands → Safe/Rebuildable quarantine, never Caution; dry-run apply; History JSON lines). CLI: `projects`, `mobile`, `history`, `daemon --keep-free`. App: Reinstall button (npm ci / yarn / pnpm / pod install) in Quarantine, Mobile pack sheet, Growth chart (Swift Charts), MenuBarExtra free space + low-disk notification + threshold menu, login item toggle (SMAppService) in Settings. Bug found by UI tests: with the menu bar extra, restored window state could launch with **no main window**; fixed by ignoring persisted window state. Tagged phase-6-done.
+- 2026-10-10 23:53 IST — 7.1 Final review written. Result: all 6 phases tagged (phase-1-done … phase-6-done).
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -183,5 +184,89 @@
 - Screenshot runs launch the app in front of whatever you are doing; one capture ended up drilled into your home folder (a click landed on the window). No files were touched; noted so you know why the app may have flashed on screen.
 
 ## Questions for review
+1. File folding: a file gets its own box only if it is ≥ 1 MB and in its folder's top 50; everything else is one 'N other files' box. OK, or keep the top 50 regardless of size?
+2. System & other is added only when a scan completes (not mid-scan). OK?
+3. `Pods` (native iOS, with a Podfile) counts as a project artifact in addition to the spec's `ios/Pods`. Keep?
+4. Daemon policy order: oldest quarantine first, then tool-command caches, then Safe/Rebuildable folders into quarantine; Caution never automatic. Right priorities?
+5. Quarantine never copies across volumes (refuses instead). OK for external-drive projects?
+6. Trial length 14 days and which features are Pro (reinstall buttons, mobile pack removal) — guesses.
+7. I renamed `spec.md` to `SPEC.md` to match your instructions and the repo layout.
+8. The real-disk index is saved at `~/Library/Application Support/DiskLens/index-root.bin` (54 MB) from my test launches; delete it if you want a cold first launch.
 
 ## Final review
+### What works
+- **Core (DiskLensCore):** getattrlistbulk scanner (8 workers, two-tier focus queue, volume/firmlink handling, hard-link dedupe, restricted folders, bundles, file folding), TreeStore (parallel Int32-indexed arrays, roll-up, pending/partial/complete, diff rescans), squarified layout + hit testing, rules.json matcher with file-system re-checks, project detection + staleness, quarantine/restore/purge, tool commands with dry-run, running-tool probes, binary snapshot, FSEvents catch-up + live updates, mobile pack, keep-free policy, growth history.
+- **App:** Canvas treemap with category colours, labels, safety badges, cleanable outline, second-level preview, partial shimmer and '≥' sizes, 250 ms zoom in/out, eased size changes, breadcrumb, Esc/⌘[/swipe back, ⌘↑ parent, tooltip (path, size, items, modified, last commit), right-click menu (Clean, Reveal, Quick Look, Copy path, Move to Trash with confirm), synced sidebar, smaller-items sheet, Full Disk Access banner, clean confirm sheet, Projects, Quarantine (Restore, Reinstall, Empty now), Mobile pack, Growth chart, menu bar free space + low-disk alert, Settings (license, login item), instant launch from saved index with 'Index from X ago · catching up…' → 'Live'.
+- **CLI `disklens`:** top, rules, clean, quarantine, projects, mobile, history, daemon --keep-free, make-fixture.
+
+### Partial
+- Running-tool checks: detection via pgrep; 'Quit' asks GUI apps to terminate and runs `gradle --stop` / `pkill metro`; Docker/Emulator have no stop action.
+- Hard-link ownership is not saved in the snapshot, so after relaunch a rescan can double-count a hard link until the next full scan.
+- Restricted folders have no area (unknown size); they show in sidebar/tooltip/banner, not as visible boxes at root.
+- NDK 'in use' only checks projects the scan found (Gradle `ndkVersion` text match).
+- APFS clone 'up to' labelling is not implemented (no cheap detection).
+
+### Stubbed
+- Licensing (local checksum keys, 14-day trial), Sparkle, notarization/Developer ID, Paddle/Lemon Squeezy.
+- No launchd plist for the daemon; run `disklens daemon` yourself or use the app's login item.
+
+### Build, run, test
+```
+# core
+cd Packages/DiskLensCore && swift build && swift test
+swift test -c release -Xswiftc -enable-testing --filter 'SnapshotTests|LiveUpdateTests'   # perf numbers
+swift build -c release && .build/release/disklens top /          # read-only real-disk scan
+# app
+brew install xcodegen   # if missing
+xcodegen generate
+xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -configuration Release -derivedDataPath build/dd build
+open build/dd/Build/Products/Release/DiskLens.app
+xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -derivedDataPath build/dd test          # UI tests
+# headless checks
+F=$(Packages/DiskLensCore/.build/debug/disklens make-fixture showcase)
+build/dd/Build/Products/Release/DiskLens.app/Contents/MacOS/DiskLens -scanRoot $F -rulesHome $F -quarantineRoot $F-q -dryRun YES -selftest
+build/dd/Build/Products/Release/DiskLens.app/Contents/MacOS/DiskLens -benchmark
+```
+Safety switches: `DISKLENS_DRY_RUN=1` or `-dryRun YES` (tool commands only logged), `-quarantineRoot`, `-rulesHome`, `-indexDir`.
+
+### Performance vs targets (Apple Silicon, internal SSD)
+| Metric | Target | Measured |
+| --- | --- | --- |
+| First boxes on screen | < 1 s | 0.10 s after scan start (0.79 s after process start, cold) |
+| Full scan ~1 M files | < 30 s | 1.80 M files in 12.1 s (CLI, release) |
+| Memory ~3 M files | < 300 MB | 174 MB max RSS at 1.8 M files → ~290 MB extrapolated (tight) |
+| Launch from saved index | < 1 s | 0.35 s process start → map (830 k nodes); 1 M-node load 0.108 s |
+| Live change reflected | < 3 s | 1 GB file: 0.17 s after write finished |
+| 5,000 boxes redraw | 60 fps | 2.4–2.7 ms/frame (≈400 fps) |
+| Root total vs Finder | within 2% | 0.12% |
+
+### Tests
+- `swift test`: 30 passed. UI tests: 3 passed. Self-test: 26 checks OK.
+
+### Known bugs and rough edges
+- XCUITest needed automation-mode approval the first time ('Timed out while enabling automation mode'); it worked on later runs.
+- Screenshot/test launches put the window in front of whatever you were doing.
+- Labels are clipped, not ellipsised, on narrow boxes; long names can cut mid-word.
+- Zoom-out animation scales text too (brief blur).
+- Detached nodes stay in memory until the next snapshot save (long sessions with heavy churn grow memory).
+- Projects 'last worked on' walks up to 50 k entries per project on first open of the Projects sheet (can take a few seconds on big monorepos).
+- Category colours are name heuristics; a folder called 'target' outside a Rust project is coloured as Rust.
+
+### Screenshots
+- Phase 2: [root](docs/screenshots/phase-2/01-root.png), [drill-down](docs/screenshots/phase-2/02-drill-projects.png), [tooltip](docs/screenshots/phase-2/03-hover-tooltip.png)
+- Phase 3: [real disk mid-scan](docs/screenshots/phase-3/01-root-mid-scan.png), [complete](docs/screenshots/phase-3/02-root-complete.png)
+- Phase 4: [cleanable](docs/screenshots/phase-4/01-root-cleanable.png), [DerivedData](docs/screenshots/phase-4/02-deriveddata.png), [clean sheet](docs/screenshots/phase-4/03-clean-sheet.png), [projects](docs/screenshots/phase-4/04-projects.png), [quarantine](docs/screenshots/phase-4/05-quarantine.png)
+- Phase 5: [relaunch from index](docs/screenshots/phase-5/01-relaunch-from-index.png), [live](docs/screenshots/phase-5/02-live.png)
+- Phase 6: [mobile pack](docs/screenshots/phase-6/01-mobile-pack.png), [growth](docs/screenshots/phase-6/02-growth.png), [quarantine + reinstall](docs/screenshots/phase-6/03-quarantine-reinstall.png), [menu bar](docs/screenshots/phase-6/04-menubar.png)
+
+### Top 10 suggested improvements (by impact)
+1. **Developer ID signing + notarization + Sparkle**: required to ship at all outside the App Store.
+2. **'Contains cleanable' roll-up**: show reclaimable bytes on ancestor boxes (e.g. Library → 32 GB cleanable) so users find junk from the root without drilling.
+3. **Full Disk Access onboarding**: detect FDA, guide the grant, auto-rescan restricted folders after it is granted (458 folders restricted here).
+4. **Persist hard-link ownership** (or rescan hard-linked dirs on catch-up) to remove the pnpm double-count after relaunch.
+5. **Memory headroom**: intern names / store them in one UTF-8 blob, drop per-node String; target 3 M files at < 200 MB.
+6. **Real licensing** (Paddle/Lemon Squeezy) and Pro gating UX.
+7. **launchd agent for `disklens daemon`** with a config file (keep-free GB, allowed rules), plus a CI mode that fails builds when free space is low.
+8. **Better labels**: ellipsis truncation, contrast-aware text colour, file-type icons for big files.
+9. **Docker integration**: show `docker system df` breakdown (images, build cache, volumes) as boxes inside the Docker VM box.
+10. **Growth timeline per folder**: store top-N folder sizes per sample and chart which folders grew this week.
