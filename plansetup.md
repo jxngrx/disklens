@@ -2,8 +2,8 @@
 
 ## Status
 - **Current phase:** 1
-- **Current task:** 1.11 tag phase 1
-- **Last updated:** 2026-10-10 22:58 IST
+- **Current task:** 1.11 tag
+- **Last updated:** 2026-10-10 22:56 IST
 
 ## Plan
 
@@ -21,7 +21,7 @@
 - [x] 1.8 Check: 10 hard links to one 100 MB file count 100 MB once
 - [x] 1.9 Check: permission-denied folder shows Restricted, scan continues
 - [x] 1.10 Perf: real-disk read-only scan, time + file count + RSS logged
-- [ ] 1.11 Tag `phase-1-done`
+- [x] 1.11 Tag `phase-1-done`
 
 ### Phase 2 — Treemap UI
 - [ ] 2.1 XcodeGen `project.yml`, app target + UI test target, builds with `xcodebuild`
@@ -98,6 +98,7 @@
 - 2026-10-10 22:56 — 1.6 `Sources/disklens/main.swift`: `disklens top [path] [--count N]`. Result: ok.
 - 2026-10-10 22:56 — 1.7–1.9 `Tests/DiskLensCoreTests/ScannerTests.swift`: du match, hard links, restricted, symlinks, folding, rescan diff. Result: 6/6 pass.
 - 2026-10-10 22:58 — 1.10 Real-disk read-only scan (release): 1,801,917 files, 831,243 nodes, 12.07 s, 174 MB max RSS. Result: ok (see Test results).
+- 2026-10-10 22:56 IST — 1.11 Tagged phase-1-done. Result: ok.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
