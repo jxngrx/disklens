@@ -62,7 +62,7 @@ public final class TreeStore: @unchecked Sendable {
     var pendingChildren: [Int32] = []
     var projectFlags: [Bool] = []
     /// Number of folders that returned permission denied.
-    public private(set) var restrictedCount = 0
+    public internal(set) var restrictedCount = 0
     /// Bumped on every mutation so observers can poll cheaply.
     public private(set) var version: UInt64 = 0
 

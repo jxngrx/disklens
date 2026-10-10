@@ -91,9 +91,16 @@ public final class DiskScanner: Sendable {
     static let bundleExtensions: Set<String> = ["app", "framework", "bundle", "plugin", "appex", "kext", "xpc",
                                                 "photoslibrary", "xcarchive", "simruntime", "docset"]
 
-    public init(rootPath: String, rootName: String? = nil, options: ScanOptions = ScanOptions(), hook: ListingHook? = nil) {
+    public convenience init(rootPath: String, rootName: String? = nil, options: ScanOptions = ScanOptions(), hook: ListingHook? = nil) {
         let root = rootPath == "/" ? "/" : (rootPath.hasSuffix("/") ? String(rootPath.dropLast()) : rootPath)
-        store = TreeStore(rootPath: root, rootName: rootName ?? (root == "/" ? "Macintosh HD" : (root as NSString).lastPathComponent))
+        let store = TreeStore(rootPath: root, rootName: rootName ?? (root == "/" ? "Macintosh HD" : (root as NSString).lastPathComponent))
+        self.init(store: store, options: options, hook: hook)
+    }
+
+    /// Scans into an existing store (e.g. one loaded from a snapshot).
+    public init(store: TreeStore, options: ScanOptions = ScanOptions(), hook: ListingHook? = nil) {
+        let root = store.rootPath
+        self.store = store
         self.options = options
         self.hook = hook
         queue = ScanQueue(store: store)
