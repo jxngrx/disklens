@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 1
-- **Current task:** 1.11 tag
-- **Last updated:** 2026-10-10 22:56 IST
+- **Current phase:** 2
+- **Current task:** 2.1 XcodeGen project
+- **Last updated:** 2026-10-10 22:58 IST
 
 ## Plan
 
@@ -25,7 +25,7 @@
 
 ### Phase 2 — Treemap UI
 - [ ] 2.1 XcodeGen `project.yml`, app target + UI test target, builds with `xcodebuild`
-- [ ] 2.2 Squarified layout + "N smaller items" merge + second-level preview
+- [x] 2.2 Squarified layout + "N smaller items" merge + second-level preview
 - [ ] 2.3 `Canvas` renderer: category colours, labels, badges, 2 pt gaps, 6 pt radius, partial shimmer
 - [ ] 2.4 Hit testing, click-to-drill with ~250 ms zoom animation
 - [ ] 2.5 Breadcrumb, back (Esc, ⌘[, swipe), ⌘↑ parent
@@ -99,6 +99,7 @@
 - 2026-10-10 22:56 — 1.7–1.9 `Tests/DiskLensCoreTests/ScannerTests.swift`: du match, hard links, restricted, symlinks, folding, rescan diff. Result: 6/6 pass.
 - 2026-10-10 22:58 — 1.10 Real-disk read-only scan (release): 1,801,917 files, 831,243 nodes, 12.07 s, 174 MB max RSS. Result: ok (see Test results).
 - 2026-10-10 22:56 IST — 1.11 Tagged phase-1-done. Result: ok.
+- 2026-10-10 22:58 IST — 2.2 Squarified layout + smaller-items merge + hit test in `DiskLensCore/Layout/Squarify.swift`, tests in `SquarifyTests.swift`. First version was O(n²) (1.45 s for 5,000 items); fixed with O(1) worst-ratio and jump-ahead merge retry: 3.7 ms. Result: 6/6 pass.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -108,6 +109,7 @@
 - Hard links: first directory that sees a (device, inode) owns its bytes; rescans of that same directory keep counting it. Duplicates inside one listing are counted once.
 - One `NSLock` around the whole TreeStore (simple, measured fine for 8 workers).
 - Detached nodes (deleted folders) stay in the arrays as garbage until the next snapshot save.
+- Squarify + hit testing live in DiskLensCore (`Layout/`) instead of `App/Treemap` so `swift test` covers them without an app test bundle.
 
 ## Deviations from spec
 
