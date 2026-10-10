@@ -25,6 +25,7 @@ struct TreemapView: View {
         .onContinuousHover { phase in
             switch phase {
             case .active(let p):
+                guard !model.sheetOpen else { model.hovered = nil; return }
                 model.hoverPoint = p
                 let b = model.box(at: p)
                 if b?.id != model.hovered?.id {
@@ -109,6 +110,12 @@ enum TreemapRenderer {
                 }
             }
 
+            // Cleanable: accent outline plus a safety badge.
+            if let rule = box.rule {
+                ctx.stroke(shape, with: .color(Color.yellow.opacity(0.95)), lineWidth: 2)
+                drawBadge(&ctx, rule.safety, in: r)
+            }
+
             if box.id == hovered {
                 ctx.stroke(shape, with: .color(.white.opacity(0.9)), lineWidth: 2)
             }
@@ -116,11 +123,29 @@ enum TreemapRenderer {
         }
     }
 
+    static func badgeColor(_ s: Safety) -> Color {
+        switch s {
+        case .safe: Color(red: 0.20, green: 0.70, blue: 0.35)
+        case .rebuildable: Color(red: 0.15, green: 0.50, blue: 0.85)
+        case .caution: Color(red: 0.90, green: 0.50, blue: 0.10)
+        }
+    }
+
+    static func drawBadge(_ ctx: inout GraphicsContext, _ safety: Safety, in r: CGRect) {
+        guard r.width >= 140, r.height >= 40 else { return }
+        let text = ctx.resolve(Text(safety.label.uppercased()).font(.system(size: 9, weight: .bold)).foregroundStyle(.white))
+        let size = text.measure(in: CGSize(width: 200, height: 20))
+        let pill = CGRect(x: r.maxX - size.width - 14, y: r.minY + 5, width: size.width + 10, height: size.height + 4)
+        ctx.fill(Path(roundedRect: pill, cornerRadius: pill.height / 2), with: .color(badgeColor(safety)))
+        ctx.draw(text, at: CGPoint(x: pill.midX, y: pill.midY))
+    }
+
     static func drawLabel(_ ctx: inout GraphicsContext, box: Box, rect r: CGRect) {
         guard r.width >= 46, r.height >= 18 else { return }
         let name = box.node?.name ?? "\(box.merged.count) smaller items"
         let size = box.node.map(sizeLabel) ?? formatBytes(box.merged.reduce(0) { $0 + $1.totalBytes })
-        let inner = r.insetBy(dx: 6, dy: 3)
+        var inner = r.insetBy(dx: 6, dy: 3)
+        if box.rule != nil, r.width >= 140, r.height >= 40 { inner.size.width = max(20, inner.width - 80) }
         ctx.drawLayer { l in
             l.clip(to: Path(r))
             if r.height >= 36 {
@@ -140,7 +165,7 @@ struct Tooltip: View {
     let model: AppModel
 
     var body: some View {
-        if let box = model.hovered, model.zoom == nil {
+        if let box = model.hovered, model.zoom == nil, !model.sheetOpen {
             let p = model.hoverPoint
             let w: CGFloat = 300
             let x = min(max(8, p.x + 16), max(8, model.canvasSize.width - w - 8))
@@ -150,11 +175,14 @@ struct Tooltip: View {
                     Text(n.name).font(.headline).lineLimit(1)
                     Text(model.path(n)).font(.caption).foregroundStyle(.secondary).lineLimit(2).truncationMode(.middle)
                     Text("Allocated: \(n.state == .complete || n.kind == .restricted ? sizeLabel(n) : "at least " + formatBytes(n.totalBytes))")
-                    Text("Items: \(n.fileCount.formatted()) files")
+                    Text("Items: \(n.fileCount.formatted()) \(n.fileCount == 1 ? "file" : "files")")
                     if n.modified > 0 {
                         Text("Modified: \(Date(timeIntervalSince1970: TimeInterval(n.modified)).formatted(date: .abbreviated, time: .shortened))")
                     }
                     if let g = model.gitDates[n.id], !g.isEmpty { Text("Last commit: \(g)") }
+                    if let rule = box.rule {
+                        Text("Cleanable: \(rule.name) · \(rule.safety.label)").foregroundStyle(.yellow)
+                    }
                     if n.kind == .restricted { Text("No permission. Grant Full Disk Access to size it.").foregroundStyle(.orange) }
                 } else {
                     Text("\(box.merged.count) smaller items").font(.headline)
@@ -178,6 +206,10 @@ struct TreemapContextMenu: View {
 
     var body: some View {
         if let n = model.hovered?.node, n.kind != .systemOther, n.kind != .otherFiles {
+            if let rule = model.hovered?.rule {
+                Button("Clean \(rule.name)…") { model.requestClean([n]) }
+                Divider()
+            }
             Button("Reveal in Finder") { model.reveal(n) }
             Button("Quick Look") { model.quickLook(n) }
             Button("Copy Path") { model.copyPath(n) }

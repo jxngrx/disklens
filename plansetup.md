@@ -1,9 +1,9 @@
 # DiskLens — build plan and log
 
 ## Status
-- **Current phase:** 4
-- **Current task:** 4.3 cleanable tags in app
-- **Last updated:** 2026-10-10 23:25 IST
+- **Current phase:** 5
+- **Current task:** 5.1 binary snapshot
+- **Last updated:** 2026-10-10 23:33 IST
 
 ## Plan
 
@@ -51,17 +51,17 @@
 ### Phase 4 — Rules, projects, quarantine
 - [x] 4.1 `rules.json` (bundled resource) + loader + matcher
 - [x] 4.2 Project detection (markers), artifact folders, staleness
-- [ ] 4.3 Cleanable tags + badges in treemap
+- [x] 4.3 Cleanable tags + badges in treemap
 - [x] 4.4 Quarantine (rename into `~/.disklens-quarantine/<date>/`), restore, purge after N days, empty now
 - [x] 4.5 Tool commands with dry-run mode; running-tool checks
-- [ ] 4.6 Projects view (reclaimable, last worked on, 30+ day filter)
-- [ ] 4.7 Clean confirm sheet (tool-command items marked non-quarantinable)
-- [ ] 4.8 License + trial (stub)
+- [x] 4.6 Projects view (reclaimable, last worked on, 30+ day filter)
+- [x] 4.7 Clean confirm sheet (tool-command items marked non-quarantinable)
+- [x] 4.8 License + trial (stub)
 - [x] 4.9 Check: clean then restore is byte-identical
 - [x] 4.10 Check: nothing outside a rule's paths can be selected for cleaning
-- [ ] 4.11 XCUITest: clean confirm sheet
-- [ ] 4.12 Screenshots `docs/screenshots/phase-4/`
-- [ ] 4.13 Tag `phase-4-done`
+- [x] 4.11 XCUITest: clean confirm sheet
+- [x] 4.12 Screenshots `docs/screenshots/phase-4/`
+- [x] 4.13 Tag `phase-4-done`
 
 ### Phase 5 — Live updates + saved index
 - [ ] 5.1 Binary snapshot write/read (memory-mapped) with FSEvents id + volume UUID
@@ -104,6 +104,7 @@
 - 2026-10-10 23:19 IST — 2.12 Tagged phase-2-done.
 - 2026-10-10 23:22 IST — 3.1–3.9 Priority queue (focus subtree tier, re-partition on drill-in) + test; bucketed stable order during scans; size changes ease between layouts (200 ms); System & other added on scan completion; Full Disk Access banner with restricted count. Screenshots in docs/screenshots/phase-3/. Bugs found from screenshots and fixed: (1) stable order fed unsorted sizes to a layout that assumed descending order, so one '8 smaller items' box swallowed the map — layout is now order-agnostic and the model only swaps items across ~41% size buckets; (2) the Canvas TimelineView paused mid-resize animation, freezing overlapping boxes — now a `resizing` flag keeps it running until the ease ends. Tagged phase-3-done.
 - 2026-10-10 23:25 IST — 4.1/4.2/4.4/4.5/4.9/4.10 Core: `Rules/rules.json` (15 rules + project markers + artifact folders), `Rules/Rules.swift` (RuleSet loader, fnmatch matcher that re-checks the file system, keep-newest-N, project ownership, scanner hook), `Rules/Projects.swift` (collect, last-worked-on, restore command), `Cleaner/Quarantine.swift` (same-volume rename + JSON manifest, restore, purge, empty now), `Cleaner/Cleaner.swift` (CommandRunner with dry-run, running-tool probes, plan/execute with re-check). Tests `CleanerTests.swift`: 6 new, all pass (20/20 total).
+- 2026-10-10 23:33 IST — 4.3–4.13 App: cleanable outline + safety badges, Clean… context item, confirm sheet (quarantine vs tool command, running-tool warnings with Quit), Projects sheet (reclaimable, last worked on, 30+ day filter, Clean Selected), Quarantine sheet (Restore, Empty Now), purge on launch, license/trial stub in Settings, clean message bar with Undo. CLI: `rules`, `clean`, `quarantine`. UI tests now run (automation mode became available) — all 3 pass after forcing the sidebar visible. Screenshot fixes: tooltip lingering under sheets (hover ignored while a sheet is up), sheet title, artifact names relative to project, '1 files', badge hiding the label on narrow boxes. Tagged phase-4-done.
 
 ## Decisions
 - No C shim target: `getattrlistbulk`, `statfs`, FSEvents are all callable from Swift via Darwin/CoreServices; one less target.
@@ -126,6 +127,8 @@
 - Unavailable simulators / simulator runtimes have no path, so they live in the Mobile pack (phase 6), not in rules.json path rules.
 - Quarantine refuses cross-volume moves (no copy fallback): a copy of a 2 GB node_modules is not 'instant' and could fill the disk.
 - `CommandRunner` runs tools via `/usr/bin/env` with Homebrew/Android paths appended; `DISKLENS_DRY_RUN=1` forces dry-run everywhere.
+- License/trial is a local stub (14-day trial in UserDefaults, `DL-XXXX-XXXX-CCCC` checksum keys). Pro gating applies to phase 6 features.
+- Projects / Quarantine / Clean are sheets on the main window, not separate windows (fewer scenes, simpler state).
 
 ## Deviations from spec
 
@@ -143,9 +146,15 @@
 - Real disk, Release app: first boxes after **0.100 s** (14 boxes) — target < 1 s ✔. Full app scan finishes in ~20 s.
 - Root total 230.33 GB vs volume used (total − available) 230.34 GB and Finder-style used (total − availableForImportantUsage) 230.06 GB → **0.12%** — target 2% ✔. Note: earlier I thought the scan over-counted by 7%; that was GiB (du) vs GB (ByteCountFormatter). Per-folder sizes match `du -sk`.
 - 458 folders restricted without Full Disk Access (banner shown).
+### Phase 4
+- `swift test` — 20 passed: rule matching (incl. keep newest 2 DeviceSupport), **nothing outside rules is cleanable** (walks every fixture path; explicit negatives for sources, project roots, home, non-project node_modules, symlinks, `..`, `/`; `plan` throws), **clean then restore byte-identical** (SHA-256 + file mode of every file), command rules only log in dry-run, purge only expired, scanner hook tags + Projects.collect.
+- `DiskLens -scanRoot <fixture> -rulesHome <fixture> -quarantineRoot <fixture>/q -dryRun YES -selftest` — 26/26 PASS (adds: artifact tagged, confirm plan, project folder refused, moved out, instant subtract, quarantine item, restored, size back after rescan).
+- `xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -derivedDataPath build/dd test` — **3/3 UI tests pass**: NavigationUITests.testClickBoxDrillsIntoRightFolder, testBreadcrumbAndBack (breadcrumb, Esc, ⌘[, ⌘↑, back button), CleanSheetUITests.testConfirmSheetCancelThenClean (right-click → Clean… → sheet → Cancel keeps files → Clean quarantines; dry-run env, fixture quarantine).
+- CLI on fixture: `disklens clean <DerivedData/Other-def> <rust-tool/target> <.npm> --dry-run --rules-home F --quarantine-root Q` → 2 quarantined, npm command only logged.
 
 ## Blockers & workarounds
 - **XCUITest automation mode** (phase 2+): `xcodebuild test` fails with "The test runner failed to initialize for UI testing. (Underlying Error: Timed out while enabling automation mode.)". macOS wants an admin to authorise UI automation, and I may not use sudo. **You need to:** run `sudo automationmodetool enable-automationmode-without-authentication` once (or approve the prompt when running the tests from Xcode), then rerun the test command. Workaround: `DiskLens -selftest` drives the same model calls (hit test → activate, breadcrumb, back, parent) headlessly.
+- Update (phase 4): XCUITest automation mode started working on a later run (approved/enabled outside this session, or the first-run timeout was transient). All UI tests now run; the `-selftest` fallback stays as a fast headless check.
 
 ## Questions for review
 

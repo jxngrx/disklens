@@ -27,16 +27,18 @@ struct DiskLensApp: App {
                 Button("Enclosing Folder") { model.up() }.keyboardShortcut(.upArrow, modifiers: .command)
             }
         }
+        Settings { LicenseSettings() }
     }
 }
 
 struct ContentView: View {
     @Bindable var model: AppModel
     @State private var swipeMonitor: Any?
+    @State private var columns: NavigationSplitViewVisibility = .all
     @AppStorage("fdaBannerDismissed") private var fdaDismissed = false
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             SidebarList(model: model)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280)
         } detail: {
@@ -65,7 +67,35 @@ struct ContentView: View {
                     .disabled(model.backStack.isEmpty)
                     .accessibilityIdentifier("back")
             }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { model.showProjects = true } label: { Label("Projects", systemImage: "folder.badge.gearshape") }
+                    .help("Projects by reclaimable size")
+                    .accessibilityIdentifier("projects")
+                Button { model.reloadQuarantine(); model.showQuarantine = true } label: { Label("Quarantine", systemImage: "arrow.uturn.backward.circle") }
+                    .help("Cleaned items you can still restore")
+                    .accessibilityIdentifier("quarantine")
+            }
         }
+        .safeAreaInset(edge: .bottom) {
+            if let msg = model.cleanMessage {
+                HStack {
+                    Text(msg).accessibilityIdentifier("clean-message")
+                    Spacer()
+                    Button("Undo…") { model.reloadQuarantine(); model.showQuarantine = true }
+                    Button { model.cleanMessage = nil } label: { Image(systemName: "xmark") }.buttonStyle(.borderless)
+                }
+                .padding(10)
+                .background(.thickMaterial)
+            }
+        }
+        .onChange(of: model.cleanPlan != nil || model.showProjects || model.showQuarantine || model.smallerItems != nil) { _, sheet in
+            if sheet { model.hovered = nil }
+        }
+        .sheet(isPresented: Binding(get: { model.cleanPlan != nil }, set: { if !$0 { model.cleanPlan = nil } })) {
+            CleanSheet(model: model, plan: model.cleanPlan ?? [])
+        }
+        .sheet(isPresented: $model.showProjects) { ProjectsView(model: model) }
+        .sheet(isPresented: $model.showQuarantine) { QuarantineView(model: model) }
         .background {
             // Esc goes back.
             Button("") { model.back() }.keyboardShortcut(.cancelAction).hidden()

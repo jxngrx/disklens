@@ -13,6 +13,7 @@ struct Box: Identifiable {
     /// Rect in the previous layout, so size changes animate.
     var from: CGRect?
     var category: Category
+    var rule: Rule?
 }
 
 /// Zoom animation: content drawn so `bounds` maps to `from`, easing to identity.
@@ -25,6 +26,8 @@ struct Zoom {
 @MainActor @Observable
 final class AppModel {
     let scanner: DiskScanner
+    let rules: RuleSet
+    let cleaner: Cleaner
     var store: TreeStore { scanner.store }
 
     private(set) var current: NodeID = .root
@@ -46,19 +49,40 @@ final class AppModel {
     var smallerItems: [NodeInfo]?
     var trashCandidate: NodeInfo?
     var gitDates: [NodeID: String] = [:]
+    // Cleaning
+    var cleanPlan: [CleanItem]?
+    var cleanRunningTools: [String] = []
+    var cleanMessage: String?
+    var showProjects = false
+    var showQuarantine = false
+    var quarantineItems: [QuarantineItem] = []
 
     private var seenVersion: UInt64 = .max
     private var order: [NodeID: Int] = [:]
     private var timer: Timer?
 
+    /// Launch arguments for tests and screenshots: `-rulesHome` points `~` in rules at a fixture,
+    /// `-quarantineRoot` moves the quarantine, `-dryRun YES` only logs tool commands.
     init(rootPath: String) {
-        scanner = DiskScanner(rootPath: rootPath, options: rootPath == "/" ? .startupVolume : ScanOptions())
+        let d = UserDefaults.standard
+        let home = d.string(forKey: "rulesHome") ?? NSHomeDirectory()
+        rules = (try? RuleSet(home: home)) ?? .default
+        let qRoot = d.string(forKey: "quarantineRoot").map { URL(fileURLWithPath: $0) } ?? Quarantine.defaultRoot
+        let days = d.integer(forKey: "retentionDays")
+        cleaner = Cleaner(rules: rules, quarantine: Quarantine(root: qRoot, retentionDays: days > 0 ? days : 7),
+                          runner: CommandRunner(dryRun: d.bool(forKey: "dryRun") || ProcessInfo.processInfo.environment["DISKLENS_DRY_RUN"] == "1"))
+        scanner = DiskScanner(rootPath: rootPath, options: rootPath == "/" ? .startupVolume : ScanOptions(), hook: rules.listingHook())
     }
 
     /// `openPath` (launch argument `-openPath`) drills into that folder once it has been listed.
     func start(openPath: String? = nil) {
         let scanner = self.scanner
         scanStarted = Date()
+        let quarantine = cleaner.quarantine
+        Task.detached(priority: .utility) {
+            // Items past the retention window are deleted for real (only inside the quarantine folder).
+            quarantine.purge()
+        }
         Task.detached(priority: .userInitiated) {
             await scanner.run()
             scanner.updateSystemOther()
@@ -67,6 +91,11 @@ final class AppModel {
                 if let p = openPath, let id = self.store.find(path: p) { self.jump(to: id) }
                 self.refresh(force: true)
                 // Screenshot helper: `-hoverName <child name>` shows that box's tooltip.
+                if let c = UserDefaults.standard.string(forKey: "cleanName"), let n = self.children.first(where: { $0.name == c }) {
+                    self.requestClean([n])
+                }
+                if UserDefaults.standard.bool(forKey: "showProjects") { self.showProjects = true }
+                if UserDefaults.standard.bool(forKey: "showQuarantine") { self.reloadQuarantine(); self.showQuarantine = true }
                 if let h = UserDefaults.standard.string(forKey: "hoverName"), let b = self.boxes.first(where: { $0.node?.name == h }) {
                     self.hovered = b
                     self.hoverPoint = CGPoint(x: b.rect.midX, y: b.rect.midY)
@@ -178,7 +207,8 @@ final class AppModel {
                 return Box(node: nil, rect: r.rect, merged: r.merged.map { kids[$0] }, category: .file)
             }
             let n = kids[i]
-            var box = Box(node: n, rect: r.rect, category: Category.of(n))
+            let rule = n.ruleID == 0 ? nil : rules.rule(id: n.ruleID)
+            var box = Box(node: n, rect: r.rect, category: Category.of(n, ruleEcosystem: rule?.ecosystem), rule: rule)
             // Faint second level: the folder's biggest children, once known.
             if n.isDirectory, r.rect.width > 80, r.rect.height > 90 {
                 // Below the two-line label.
@@ -193,6 +223,8 @@ final class AppModel {
         layoutAt = Date()
         if let h = hovered { hovered = boxes.first { $0.id == h.id } }
     }
+
+    var sheetOpen: Bool { cleanPlan != nil || showProjects || showQuarantine || smallerItems != nil || trashCandidate != nil }
 
     func box(at p: CGPoint) -> Box? { boxes.first { $0.rect.contains(p) } }
 
@@ -224,6 +256,70 @@ final class AppModel {
     func copyPath(_ n: NodeInfo) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(path(n), forType: .string)
+    }
+
+    // MARK: - Cleaning
+
+    func requestClean(_ nodes: [NodeInfo]) {
+        do {
+            let plan = try cleaner.plan(nodes.map { (store.path(of: $0.id), $0.totalBytes) })
+            cleanRunningTools = RunningTools.running(Array(Set(plan.flatMap { $0.rule.runningTools ?? [] })).sorted())
+            cleanMessage = nil
+            cleanPlan = plan
+        } catch {
+            cleanMessage = "Not cleanable: \(error)"
+        }
+    }
+
+    /// Runs the plan, then removes cleaned nodes from the tree right away (FSEvents confirms later).
+    func performClean() {
+        guard let plan = cleanPlan else { return }
+        let results = cleaner.execute(plan)
+        var freed: UInt64 = 0
+        var failed: [String] = []
+        for r in results {
+            if let e = r.error { failed.append("\((r.item.path as NSString).lastPathComponent): \(e)"); continue }
+            freed += r.item.bytes
+            // Tool commands clean inside the folder; the folder itself may stay, so only quarantined items vanish now.
+            if r.quarantined != nil, let id = store.find(path: r.item.path) { store.remove(id) }
+        }
+        cleanPlan = nil
+        cleanMessage = failed.isEmpty ? "Cleaned \(formatBytes(freed))." : "Cleaned \(formatBytes(freed)). Failed: " + failed.joined(separator: "; ")
+        refresh(force: true)
+        reloadQuarantine()
+    }
+
+    func quitTool(_ name: String) {
+        if let cmd = RunningTools.stopCommands[name] {
+            cleaner.runner.run(cmd)
+        } else {
+            let ids = ["Xcode": "com.apple.dt.Xcode", "Simulator": "com.apple.iphonesimulator", "Docker": "com.docker.docker"]
+            if let id = ids[name] { NSRunningApplication.runningApplications(withBundleIdentifier: id).forEach { $0.terminate() } }
+        }
+        cleanRunningTools.removeAll { $0 == name }
+    }
+
+    func reloadQuarantine() { quarantineItems = cleaner.quarantine.items() }
+
+    func restore(_ item: QuarantineItem) {
+        do {
+            try cleaner.quarantine.restore(item)
+            cleanMessage = "Restored \((item.originalPath as NSString).lastPathComponent)."
+            // Rescan the parent so the box comes back.
+            let parent = (item.originalPath as NSString).deletingLastPathComponent
+            if let id = store.find(path: parent) {
+                let scanner = self.scanner
+                Task.detached { await scanner.rescan([id]); await MainActor.run { self.refresh(force: true) } }
+            }
+        } catch {
+            cleanMessage = "Restore failed: \(error)"
+        }
+        reloadQuarantine()
+    }
+
+    func emptyQuarantine() {
+        cleaner.quarantine.purge(everything: true)
+        reloadQuarantine()
     }
 
     func moveToTrash(_ n: NodeInfo) {

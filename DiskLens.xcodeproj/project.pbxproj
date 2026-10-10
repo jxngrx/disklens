@@ -10,9 +10,11 @@
 		33D5323C9B17F601862E1160 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC371F0C76FF052F1A3CD0C /* AppModel.swift */; };
 		42A8D474FE332EE9E34EF1A0 /* DebugModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA142B0C8952C521A818E87B /* DebugModes.swift */; };
 		42F2205D2F0A2473A56F8F45 /* DiskLensCore in Frameworks */ = {isa = PBXBuildFile; productRef = A2EF832CCF345F3C7A96CEC9 /* DiskLensCore */; };
+		57B85D468E9CA8E980CBC3FE /* License.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A17B7832E93ABF39028CAA /* License.swift */; };
 		65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99F86BBCB63A3ABFC60F545 /* TreemapView.swift */; };
 		88A1DF43AAF849F06A718DD1 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED56641580DBBF22D5DEEE9 /* Category.swift */; };
 		91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6EA64F916BB6811CDD73A37 /* NavigationViews.swift */; };
+		A924BE7ED0206A31482CB4AA /* CleanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B044A7A769D3540090EF75 /* CleanViews.swift */; };
 		C53F9C2642934270E8098010 /* NavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9282DFA1EBEAB98721B4FF48 /* NavigationUITests.swift */; };
 		F3C072D63D219A2D338B85FB /* DiskLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DA5FEC7C701F315854C258 /* DiskLensApp.swift */; };
 /* End PBXBuildFile section */
@@ -29,6 +31,7 @@
 
 /* Begin PBXFileReference section */
 		0DC371F0C76FF052F1A3CD0C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		35A17B7832E93ABF39028CAA /* License.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = License.swift; sourceTree = "<group>"; };
 		4ED56641580DBBF22D5DEEE9 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		688423D5D3DD9BD3211DBA24 /* DiskLensUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiskLensUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8E69AAF15045DCF39D0CB2CC /* DiskLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DiskLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -36,6 +39,7 @@
 		D2DA5FEC7C701F315854C258 /* DiskLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskLensApp.swift; sourceTree = "<group>"; };
 		DA142B0C8952C521A818E87B /* DebugModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugModes.swift; sourceTree = "<group>"; };
 		E6EA64F916BB6811CDD73A37 /* NavigationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationViews.swift; sourceTree = "<group>"; };
+		E7B044A7A769D3540090EF75 /* CleanViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanViews.swift; sourceTree = "<group>"; };
 		E81D7BE4A38FFD87770799F1 /* DiskLensCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DiskLensCore; path = Packages/DiskLensCore; sourceTree = SOURCE_ROOT; };
 		F99F86BBCB63A3ABFC60F545 /* TreemapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemapView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -92,6 +96,7 @@
 				0DC371F0C76FF052F1A3CD0C /* AppModel.swift */,
 				DA142B0C8952C521A818E87B /* DebugModes.swift */,
 				D2DA5FEC7C701F315854C258 /* DiskLensApp.swift */,
+				687D8A99F05EFEBBFE2DDDC4 /* Clean */,
 				3D860C741087ABBA8D623DDD /* Navigation */,
 				FEB5E8BA0AF29D5653C38DA2 /* Treemap */,
 			);
@@ -105,6 +110,15 @@
 				688423D5D3DD9BD3211DBA24 /* DiskLensUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		687D8A99F05EFEBBFE2DDDC4 /* Clean */ = {
+			isa = PBXGroup;
+			children = (
+				E7B044A7A769D3540090EF75 /* CleanViews.swift */,
+				35A17B7832E93ABF39028CAA /* License.swift */,
+			);
+			path = Clean;
 			sourceTree = "<group>";
 		};
 		FEB5E8BA0AF29D5653C38DA2 /* Treemap */ = {
@@ -214,8 +228,10 @@
 			files = (
 				33D5323C9B17F601862E1160 /* AppModel.swift in Sources */,
 				88A1DF43AAF849F06A718DD1 /* Category.swift in Sources */,
+				A924BE7ED0206A31482CB4AA /* CleanViews.swift in Sources */,
 				42A8D474FE332EE9E34EF1A0 /* DebugModes.swift in Sources */,
 				F3C072D63D219A2D338B85FB /* DiskLensApp.swift in Sources */,
+				57B85D468E9CA8E980CBC3FE /* License.swift in Sources */,
 				91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */,
 				65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */,
 			);

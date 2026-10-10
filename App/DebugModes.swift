@@ -79,6 +79,33 @@ enum SelfTest {
                 model.up()
                 check(crumbNames() == [rootName] + path.dropLast(), "parent (⌘↑)")
             }
+            // Clean + restore flow, only on fixtures with a fixture quarantine.
+            let root = model.store.rootPath
+            if root.contains("/disklens-fixtures/"), model.cleaner.quarantine.root.path.contains("/disklens-fixtures/"),
+               model.cleaner.runner.dryRun,
+               let id = model.store.find(path: root + "/Projects/web-shop/node_modules") {
+                let n = model.store.node(id)
+                check(n.ruleID == model.rules.artifactRule.id, "node_modules tagged as artifact")
+                let before = model.store.node(.root).totalBytes
+                model.requestClean([n])
+                check(model.cleanPlan?.count == 1 && model.cleanPlan?.first?.rule.quarantinable == true, "confirm sheet plan")
+                // Something outside the rules is refused.
+                model.cleanPlan = nil
+                model.requestClean([model.store.node(model.store.find(path: root + "/Projects/web-shop")!)])
+                check(model.cleanPlan == nil && model.cleanMessage?.hasPrefix("Not cleanable") == true, "project folder refused")
+                model.requestClean([n])
+                model.performClean()
+                check(!FileManager.default.fileExists(atPath: root + "/Projects/web-shop/node_modules"), "node_modules moved out")
+                check(model.store.node(.root).totalBytes == before - n.totalBytes, "tree subtracted instantly")
+                check(model.quarantineItems.count == 1, "one quarantine item")
+                if let item = model.quarantineItems.first { model.restore(item) }
+                check(FileManager.default.fileExists(atPath: root + "/Projects/web-shop/node_modules/react/index.js"), "restored on disk")
+                for _ in 0..<40 where model.store.find(path: root + "/Projects/web-shop/node_modules") == nil {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                try? await Task.sleep(for: .milliseconds(200))
+                check(model.store.node(.root).totalBytes == before, "tree size back after restore rescan")
+            }
             print(failures.isEmpty ? "SELFTEST OK" : "SELFTEST FAILED \(failures.count)")
             fflush(stdout)
             exit(failures.isEmpty ? 0 : 1)
