@@ -1,11 +1,15 @@
 import AppKit
 import DiskLensCore
+import Sparkle
 import SwiftUI
 
 @main
 struct DiskLensApp: App {
     @State private var model: AppModel
     @State private var status = DiskStatus()
+    // No update checks on fixture runs (UI tests, selftest).
+    // No update checks on fixture runs (UI tests, selftest).
+    private let updater = SPUStandardUpdaterController(startingUpdater: !CommandLine.arguments.contains("-scanRoot"), updaterDelegate: nil, userDriverDelegate: nil)
 
     init() {
         // With a menu bar extra the app can quit with no windows; restoring that state would launch
@@ -26,6 +30,9 @@ struct DiskLensApp: App {
         }
         .defaultSize(width: 1280, height: 800)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { updater.checkForUpdates(nil) }
+            }
             CommandGroup(after: .sidebar) {
                 Button("Back") { model.back() }.keyboardShortcut("[", modifiers: .command)
                 Button("Enclosing Folder") { model.up() }.keyboardShortcut(.upArrow, modifiers: .command)
@@ -57,22 +64,31 @@ struct ContentView: View {
             SidebarList(model: model)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280)
         } detail: {
-            VStack(spacing: 0) {
-                if model.restrictedCount > 0 && !fdaDismissed {
-                    FullDiskAccessBanner(count: model.restrictedCount) { fdaDismissed = true }
+            switch model.tab {
+            case .files:
+                VStack(spacing: 0) {
+                    if model.restrictedCount > 0 && !fdaDismissed {
+                        FullDiskAccessBanner(count: model.restrictedCount) { fdaDismissed = true }
+                    }
+                    BreadcrumbBar(model: model)
+                    Divider()
+                    TreemapView(model: model)
+                        .padding(6)
+                    Divider()
+                    HStack {
+                        LegendBar()
+                        Spacer(minLength: 12)
+                        Text(model.statusText).font(.caption).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("scan-status")
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 6)
                 }
-                BreadcrumbBar(model: model)
-                Divider()
-                TreemapView(model: model)
-                    .padding(6)
-                Divider()
-                HStack {
-                    LegendBar()
-                    Spacer(minLength: 12)
-                    Text(model.statusText).font(.caption).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("scan-status")
-                }
-                .padding(.horizontal, 12).padding(.vertical, 6)
+            case .apps: AppsView(model: model).navigationTitle("Apps")
+            case .developer: DeveloperView(model: model).navigationTitle("Developer")
+            case .projects: ProjectsView(model: model).navigationTitle("Projects")
+            case .mobile: MobilePackView(model: model).navigationTitle("Mobile")
+            case .quarantine: QuarantineView(model: model).navigationTitle("Quarantine")
+            case .growth: GrowthView(model: model).navigationTitle("Growth")
             }
         }
         .toolbar {
@@ -83,16 +99,10 @@ struct ContentView: View {
                     .accessibilityIdentifier("back")
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                Button { model.showProjects = true } label: { Label("Projects", systemImage: "folder.badge.gearshape") }
-                    .help("Projects by reclaimable size")
-                    .accessibilityIdentifier("projects")
-                Button { model.reloadQuarantine(); model.showQuarantine = true } label: { Label("Quarantine", systemImage: "arrow.uturn.backward.circle") }
-                    .help("Cleaned items you can still restore")
-                    .accessibilityIdentifier("quarantine")
-                Button { model.showMobile = true } label: { Label("Mobile", systemImage: "iphone.gen3") }
-                    .help("Android SDK, emulators and simulator runtimes")
-                Button { model.showGrowth = true } label: { Label("Growth", systemImage: "chart.xyaxis.line") }
-                    .help("Disk growth timeline")
+                Button { model.manualRefresh() } label: { Image(systemName: "arrow.clockwise") }
+                    .help("Refresh")
+                    .disabled(model.refreshing)
+                    .accessibilityIdentifier("refresh")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -100,23 +110,23 @@ struct ContentView: View {
                 HStack {
                     Text(msg).accessibilityIdentifier("clean-message")
                     Spacer()
-                    Button("Undo…") { model.reloadQuarantine(); model.showQuarantine = true }
+                    if model.cleanNeedsPermission {
+                        Button("Grant Permission…") { NSWorkspace.shared.open(FullDiskAccessBanner.settingsURL) }
+                            .accessibilityIdentifier("grant-permission")
+                    }
+                    Button("Undo…") { model.reloadQuarantine(); model.tab = .quarantine }
                     Button { model.cleanMessage = nil } label: { Image(systemName: "xmark") }.buttonStyle(.borderless)
                 }
                 .padding(10)
                 .background(.thickMaterial)
             }
         }
-        .onChange(of: model.cleanPlan != nil || model.showProjects || model.showQuarantine || model.smallerItems != nil) { _, sheet in
+        .onChange(of: model.cleanPlan != nil || model.smallerItems != nil) { _, sheet in
             if sheet { model.hovered = nil }
         }
         .sheet(isPresented: Binding(get: { model.cleanPlan != nil }, set: { if !$0 { model.cleanPlan = nil } })) {
             CleanSheet(model: model, plan: model.cleanPlan ?? [])
         }
-        .sheet(isPresented: $model.showProjects) { ProjectsView(model: model) }
-        .sheet(isPresented: $model.showQuarantine) { QuarantineView(model: model) }
-        .sheet(isPresented: $model.showMobile) { MobilePackView(model: model) }
-        .sheet(isPresented: $model.showGrowth) { GrowthView(model: model) }
         .background {
             // Esc goes back.
             Button("") { model.back() }.keyboardShortcut(.cancelAction).hidden()
@@ -146,6 +156,7 @@ struct ContentView: View {
 
 /// One-time banner shown when folders came back permission-denied.
 struct FullDiskAccessBanner: View {
+    static let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
     let count: Int
     let dismiss: () -> Void
 
@@ -156,7 +167,7 @@ struct FullDiskAccessBanner: View {
                 .font(.callout)
             Spacer()
             Button("Open Full Disk Access Settings") {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+                NSWorkspace.shared.open(Self.settingsURL)
             }
             Button("Dismiss", action: dismiss).buttonStyle(.borderless)
         }

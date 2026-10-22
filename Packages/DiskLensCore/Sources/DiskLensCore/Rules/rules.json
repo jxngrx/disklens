@@ -31,6 +31,12 @@
       "command": ["brew", "cleanup", "-s"] },
     { "id": 14, "name": "Docker VM disk", "paths": ["~/Library/Containers/com.docker.docker/Data/vms/*"], "safety": "caution", "ecosystem": "otherDev",
       "command": ["docker", "system", "prune", "-f"], "runningTools": [], "note": "Runs `docker system df` first; volumes are never pruned." },
+    { "id": 16, "name": "App caches", "paths": ["~/Library/Caches/*"], "safety": "rebuildable", "ecosystem": "system",
+      "note": "Apps rebuild their cache on next launch." },
+    { "id": 17, "name": "App logs", "paths": ["~/Library/Logs/*"], "safety": "safe", "ecosystem": "system",
+      "note": "Old log files; apps write new ones." },
+    { "id": 18, "name": "User cache (~/.cache)", "paths": ["~/.cache/*"], "safety": "rebuildable", "ecosystem": "otherDev",
+      "note": "Tool caches such as pip, huggingface, puppeteer." },
     { "id": 15, "name": "Project build artifact", "artifact": true, "safety": "rebuildable", "ecosystem": "",
       "note": "Rebuilt by the project's package manager or build tool." }
   ]

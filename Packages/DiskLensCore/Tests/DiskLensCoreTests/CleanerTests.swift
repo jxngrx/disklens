@@ -112,26 +112,35 @@ func treeDigest(_ path: String) -> [String: String] {
         #expect(throws: CleanError.notCleanable(f.p("Documents"))) { try cleaner.plan([(f.p("Documents"), 1)]) }
     }
 
-    /// Phase 4 check: clean then restore leaves the folder byte-identical.
-    @Test func cleanThenRestoreIsByteIdentical() throws {
+    /// Cleaning deletes permanently (no quarantine) and leaves sibling source files alone.
+    @Test func cleanDeletesPermanently() throws {
         let f = try FakeHome()
         defer { Fixtures.remove(f.root) }
         let targets = [f.p("Projects/web/node_modules"), f.p("Library/Developer/Xcode/DerivedData/App-abc")]
-        chmod(f.p("Projects/web/node_modules/react/index.js"), 0o600)
-        let before = targets.map(treeDigest)
         let q = Quarantine(root: f.root.appendingPathComponent("home/.disklens-quarantine"))
         let runner = CommandRunner(dryRun: true)
         let cleaner = Cleaner(rules: f.rules, quarantine: q, runner: runner)
-        let plan = try cleaner.plan(targets.map { ($0, 1) })
-        let results = cleaner.execute(plan)
-        #expect(results.allSatisfy { $0.error == nil && $0.quarantined != nil })
+        let results = cleaner.execute(try cleaner.plan(targets.map { ($0, 1) }))
+        #expect(results.allSatisfy { $0.error == nil && $0.removed && $0.quarantined == nil })
         #expect(targets.allSatisfy { !FileManager.default.fileExists(atPath: $0) })
-        #expect(q.items().count == 2)
-        for item in q.items() { try q.restore(item) }
-        #expect(targets.map(treeDigest) == before)
         #expect(q.items().isEmpty)
         #expect(FileManager.default.fileExists(atPath: f.p("Projects/web/src/index.js")))
         #expect(runner.log.isEmpty)
+    }
+
+    /// A read-only folder inside the target must not make the clean fail.
+    @Test func cleanHandlesReadOnlyFolders() throws {
+        let f = try FakeHome()
+        defer { Fixtures.remove(f.root) }
+        let target = f.p("Library/Developer/Xcode/DerivedData/App-abc")
+        let inner = target + "/ro"
+        try FileManager.default.createDirectory(atPath: inner, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: inner + "/x", contents: Data("x".utf8))
+        chmod(inner, 0o555)
+        let cleaner = Cleaner(rules: f.rules, quarantine: Quarantine(root: f.root.appendingPathComponent("q")), runner: CommandRunner(dryRun: true))
+        let r = cleaner.execute(try cleaner.plan([(target, 1)]))
+        #expect(r.allSatisfy { $0.error == nil && $0.removed })
+        #expect(!FileManager.default.fileExists(atPath: target))
     }
 
     @Test func commandRulesOnlyLogInDryRun() throws {

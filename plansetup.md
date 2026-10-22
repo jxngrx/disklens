@@ -270,3 +270,8 @@ Safety switches: `DISKLENS_DRY_RUN=1` or `-dryRun YES` (tool commands only logge
 8. **Better labels**: ellipsis truncation, contrast-aware text colour, file-type icons for big files.
 9. **Docker integration**: show `docker system df` breakdown (images, build cache, volumes) as boxes inside the Docker VM box.
 10. **Growth timeline per folder**: store top-N folder sizes per sample and chart which folders grew this week.
+
+## Launch setup (2026-10-22)
+- Sparkle 2 auto-update (feed on GitHub Pages, EdDSA public key in project.yml), Check for Updates menu item.
+- CI: .github/workflows ci.yml, release.yml (tag vX.Y.Z -> signed DMG + appcast), pages.yml; scripts/sign.sh, scripts/appcast.sh; site/ landing page.
+- Notarization needs repo secrets (see README). Selftest needs a foreground GUI session; UI tests 3/3 and swift test 32/32 pass.

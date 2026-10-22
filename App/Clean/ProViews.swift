@@ -10,16 +10,25 @@ struct MobilePackView: View {
     @State private var items: [MobileItem]?
     @State private var confirm: MobileItem?
     @State private var log: [String] = []
+    @AppStorage("boxesMode") private var boxesMode = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Mobile pack").font(.title2.bold())
+                Spacer()
+                ViewModePicker()
                 if !License.proEnabled { Text("PRO").font(.caption.bold()).padding(4).background(.orange, in: Capsule()) }
             }
             Text("Items in use by an AVD, a project or a simulator are not offered for cleaning.")
                 .foregroundStyle(.secondary)
-            if let items {
+            if let items, boxesMode {
+                BoxesView(items: items.map { i in
+                    BoxItem(id: i.id, title: i.name, subtitle: i.inUse ? "in use" : "", bytes: i.bytes,
+                            color: (i.kind == .simRuntime || i.kind == .unavailableSimulators ? Category.apple : .android).color,
+                            path: i.path, clean: i.inUse || !License.proEnabled ? nil : { confirm = i })
+                })
+            } else if let items {
                 List {
                     ForEach([MobileItem.Kind.avd, .systemImage, .ndk, .simRuntime, .unavailableSimulators], id: \.self) { kind in
                         let group = items.filter { $0.kind == kind }
@@ -35,10 +44,9 @@ struct MobilePackView: View {
                 ProgressView("Reading Android SDK and simulators…").frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             ForEach(log, id: \.self) { Text($0).font(.caption.monospaced()).foregroundStyle(.secondary) }
-            HStack { Spacer(); Button("Done") { model.showMobile = false }.keyboardShortcut(.defaultAction) }
         }
         .padding(20)
-        .frame(width: 720, height: 520)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
             let projects = Projects.collect(store: model.store, rules: model.rules).map(\.path)
             items = await Task.detached { MobilePack(projectPaths: projects).items() }.value
@@ -103,10 +111,9 @@ struct GrowthView: View {
                 }
                 .chartYAxisLabel("GB")
             }
-            HStack { Spacer(); Button("Done") { model.showGrowth = false }.keyboardShortcut(.defaultAction) }
         }
         .padding(20)
-        .frame(width: 640, height: 400)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -151,7 +158,7 @@ struct MenuBarContent: View {
 
     var body: some View {
         Text("\(formatBytes(status.freeBytes)) free on Macintosh HD")
-        let cleanable = model.store.nodes { $0.ruleID != 0 }.reduce(UInt64(0)) { $0 + $1.totalBytes }
+        let cleanable = model.store.ruleTaggedNodes().reduce(UInt64(0)) { $0 + $1.totalBytes }
         if cleanable > 0 { Text("Up to \(formatBytes(cleanable)) cleanable") }
         Divider()
         Button("Open DiskLens") { NSApp.activate(ignoringOtherApps: true); openWindow(id: "main") }

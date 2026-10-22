@@ -16,6 +16,30 @@ struct Box: Identifiable {
     var rule: Rule?
 }
 
+/// Main-window sections; everything except Files replaces the treemap instead of opening a popup.
+enum AppTab: String, CaseIterable, Identifiable {
+    case apps, files, developer, projects, mobile, quarantine, growth
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var icon: String {
+        switch self {
+        case .apps: "square.grid.3x3"
+        case .files: "square.grid.2x2"
+        case .developer: "hammer"
+        case .projects: "folder.badge.gearshape"
+        case .mobile: "iphone.gen3"
+        case .quarantine: "arrow.uturn.backward.circle"
+        case .growth: "chart.xyaxis.line"
+        }
+    }
+}
+
+struct DevIndex: Sendable {
+    var version: UInt64
+    var tools: [DeveloperGroup]
+    var projects: [ProjectInfo]
+}
+
 /// Zoom animation: content drawn so `bounds` maps to `from`, easing to identity.
 struct Zoom {
     var from: CGRect
@@ -54,10 +78,15 @@ final class AppModel {
     var cleanPlan: [CleanItem]?
     var cleanRunningTools: [String] = []
     var cleanMessage: String?
-    var showProjects = false
-    var showQuarantine = false
-    var showMobile = false
-    var showGrowth = false
+    /// True when the last message reports a permission failure; the bar then offers Full Disk Access settings.
+    var cleanNeedsPermission: Bool {
+        guard let m = cleanMessage?.lowercased() else { return false }
+        return m.contains("permission") || m.contains("not permitted")
+    }
+    var tab: AppTab = UserDefaults.standard.string(forKey: "scanRoot") == nil ? .apps : .files
+    let appsState = AppsState()
+    private(set) var devIndex: DevIndex?
+    private(set) var devLoading = false
     var quarantineItems: [QuarantineItem] = []
 
     private var seenVersion: UInt64 = .max
@@ -84,10 +113,12 @@ final class AppModel {
 
     /// "Index from 2 h ago · catching up…", "Live", "Scanning…", "Scan complete".
     var statusText: String {
+        if refreshing { return "Refreshing…" }
         if let meta = index.loaded {
             let age = meta.savedAt.formatted(.relative(presentation: .named))
             return caughtUp ? "Live · index saved \(age)" : "Index from \(age) · catching up…"
         }
+        if refreshing { return "Refreshing…" }
         return scanning ? "Scanning…" : "Scan complete"
     }
     private(set) var caughtUp = false
@@ -104,21 +135,27 @@ final class AppModel {
             quarantine.purge()
         }
         Task.detached(priority: .userInitiated) {
-            await index.start()
+            // ponytail: no continuous FSEvents live-watch (it's what kept the whole-disk tree churning
+            // in memory). Refresh instead happens on user actions (navigate/clean) or the manual button.
+            await index.start(watch: false)
             // Growth timeline sample for the startup volume (at most hourly).
             if index.store.rootPath == "/" { History.record(store: index.store) }
             await MainActor.run {
                 self.scanning = false
+                self.caughtUp = true
+                self.timer?.invalidate()
+                self.timer = nil
+                self.refreshDevIndex()
                 if let p = openPath, let id = self.store.find(path: p) { self.jump(to: id) }
                 self.refresh(force: true)
                 // Screenshot helper: `-hoverName <child name>` shows that box's tooltip.
                 if let c = UserDefaults.standard.string(forKey: "cleanName"), let n = self.children.first(where: { $0.name == c }) {
                     self.requestClean([n])
                 }
-                if UserDefaults.standard.bool(forKey: "showProjects") { self.showProjects = true }
-                if UserDefaults.standard.bool(forKey: "showQuarantine") { self.reloadQuarantine(); self.showQuarantine = true }
-                if UserDefaults.standard.bool(forKey: "showMobile") { self.showMobile = true }
-                if UserDefaults.standard.bool(forKey: "showGrowth") { self.showGrowth = true }
+                for t in AppTab.allCases where t != .files && UserDefaults.standard.bool(forKey: "show" + t.rawValue.capitalized) {
+                    self.tab = t
+                    if t == .quarantine { self.reloadQuarantine() }
+                }
                 if let h = UserDefaults.standard.string(forKey: "hoverName"), let b = self.boxes.first(where: { $0.node?.name == h }) {
                     self.hovered = b
                     self.hoverPoint = CGPoint(x: b.rect.midX, y: b.rect.midY)
@@ -198,6 +235,84 @@ final class AppModel {
         }
     }
 
+    var refreshing = false
+
+    /// Developer tab data. Built off the main thread and cached against `store.version`; cleaning patches it in
+    /// place, so reopening the tab is instant and only a real tree change (rescan) triggers a rebuild.
+    func refreshDevIndex() {
+        let store = self.store, rules = self.rules
+        guard !devLoading, devIndex?.version != store.version else { return }
+        devLoading = true
+        Task.detached(priority: .userInitiated) {
+            let v = store.version
+            let artifactID = rules.artifactRule.id
+            let tagged = store.ruleTaggedNodes().filter { $0.ruleID != artifactID }
+            let tools = Dictionary(grouping: tagged, by: \.ruleID).compactMap { id, nodes in
+                rules.rule(id: id).map { DeveloperGroup(rule: $0, nodes: nodes.sorted { $0.totalBytes > $1.totalBytes }) }
+            }.sorted { $0.total > $1.total }
+            let projects = Projects.collect(store: store, rules: rules)
+            await MainActor.run {
+                self.devIndex = DevIndex(version: v, tools: tools, projects: projects)
+                self.devLoading = false
+                if v != store.version { self.refreshDevIndex() }
+            }
+        }
+    }
+
+    /// Deletion half of the index: drop cleaned nodes without rescanning the tree.
+    private func dropFromDevIndex(_ ids: Set<NodeID>, allRemoved: Bool) {
+        guard var d = devIndex, !ids.isEmpty else { return }
+        d.tools = d.tools.compactMap { g in
+            var g = g; g.nodes.removeAll { ids.contains($0.id) }
+            return g.nodes.isEmpty ? nil : g
+        }
+        d.projects = d.projects.compactMap { p in
+            var p = p; p.artifacts.removeAll { ids.contains($0.id) }
+            return p.artifacts.isEmpty ? nil : p
+        }
+        if allRemoved { d.version = store.version }
+        devIndex = d
+    }
+
+    /// Manual refresh button: relist every folder in scope in place (sizes stay on screen, only real differences
+    /// apply). Files tab: the folder you are looking at and everything below it. Other tabs: every cleanable
+    /// item and the folder holding it, so deletions and new caches show up. No FSEvents watching, so this is the
+    /// only way outside changes get picked up.
+    func manualRefresh() {
+        if tab == .apps {
+            appsState.load(self, force: true)
+            if let a = appsState.selected { appsState.select(a, model: self) }
+            return
+        }
+        guard !refreshing else { return }
+        refreshing = true
+        let (scanner, index, store) = (self.scanner, self.index, self.store)
+        let roots: [NodeID]
+        if tab == .files {
+            roots = [current]
+        } else {
+            let tagged = store.ruleTaggedNodes().map(\.id)
+            roots = tagged + tagged.compactMap { store.parent(of: $0) }
+        }
+        let ownsTimer = timer == nil
+        if ownsTimer { timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in MainActor.assumeIsolated { self.refresh() } } }
+        Task.detached(priority: .userInitiated) {
+            var seen = Set<Int32>()
+            var ids: [NodeID] = []
+            for r in roots { for d in store.directories(in: r) where seen.insert(d.raw).inserted { ids.append(d) } }
+            await scanner.rescan(ids)
+            scanner.updateSystemOther()
+            try? index.save()
+            await MainActor.run {
+                if ownsTimer { self.timer?.invalidate(); self.timer = nil }
+                self.refreshing = false
+                self.refresh(force: true)
+                self.refreshDevIndex()
+                if self.tab == .quarantine { self.reloadQuarantine() }
+            }
+        }
+    }
+
     // MARK: - Data
 
     func refresh(force: Bool = false) {
@@ -261,7 +376,7 @@ final class AppModel {
     }
 
     var sheetOpen: Bool {
-        cleanPlan != nil || showProjects || showQuarantine || showMobile || showGrowth || smallerItems != nil || trashCandidate != nil
+        cleanPlan != nil || smallerItems != nil || trashCandidate != nil
     }
 
     func box(at p: CGPoint) -> Box? { boxes.first { $0.rect.contains(p) } }
@@ -299,14 +414,27 @@ final class AppModel {
     // MARK: - Cleaning
 
     func requestClean(_ nodes: [NodeInfo]) {
-        do {
-            let plan = try cleaner.plan(nodes.map { (store.path(of: $0.id), $0.totalBytes) })
-            cleanRunningTools = RunningTools.running(Array(Set(plan.flatMap { $0.rule.runningTools ?? [] })).sorted())
-            cleanMessage = nil
-            cleanPlan = plan
-        } catch {
-            cleanMessage = "Not cleanable: \(error)"
+        var plan: [CleanItem] = []
+        var gone = Set<NodeID>()
+        var skipped: [String] = []
+        for n in nodes {
+            let p = store.path(of: n.id)
+            if p.isEmpty || !FileManager.default.fileExists(atPath: p) { gone.insert(n.id); continue }
+            if let item = (try? cleaner.plan([(p, n.totalBytes)]))?.first { plan.append(item) } else { skipped.append(n.name) }
         }
+        // Items that vanished outside the app (or were already cleaned): drop them from the tree and Developer index.
+        for id in gone { store.remove(id) }
+        if !gone.isEmpty { dropFromDevIndex(gone, allRemoved: false); refresh(force: true) }
+        var notes: [String] = []
+        if !gone.isEmpty { notes.append("\(gone.count) already gone") }
+        if !skipped.isEmpty { notes.append("skipped \(skipped.count) not cleanable (\(skipped.prefix(3).joined(separator: ", "))\(skipped.count > 3 ? "…" : ""))") }
+        guard !plan.isEmpty else {
+            cleanMessage = notes.isEmpty ? "Nothing to clean." : "Nothing to clean: " + notes.joined(separator: ", ") + "."
+            return
+        }
+        cleanRunningTools = RunningTools.running(Array(Set(plan.flatMap { $0.rule.runningTools ?? [] })).sorted())
+        cleanMessage = notes.isEmpty ? nil : notes.joined(separator: ", ").prefix(1).uppercased() + notes.joined(separator: ", ").dropFirst() + "."
+        cleanPlan = plan
     }
 
     /// Runs the plan, then removes cleaned nodes from the tree right away (FSEvents confirms later).
@@ -315,12 +443,15 @@ final class AppModel {
         let results = cleaner.execute(plan)
         var freed: UInt64 = 0
         var failed: [String] = []
+        var removed = Set<NodeID>()
         for r in results {
-            if let e = r.error { failed.append("\((r.item.path as NSString).lastPathComponent): \(e)"); continue }
+            if let e = r.error { failed.append("\((r.item.path as NSString).lastPathComponent): \(e.message)"); continue }
             freed += r.item.bytes
-            // Tool commands clean inside the folder; the folder itself may stay, so only quarantined items vanish now.
-            if r.quarantined != nil, let id = store.find(path: r.item.path) { store.remove(id) }
+            // Tool commands clean inside the folder; the folder itself may stay, so only deleted items vanish now.
+            if r.removed, let id = store.find(path: r.item.path) { store.remove(id); removed.insert(id) }
         }
+        // Tool-command cleans change sizes without removing nodes, so the index only counts as current if every item was removed.
+        dropFromDevIndex(removed, allRemoved: removed.count == results.count)
         cleanPlan = nil
         cleanMessage = failed.isEmpty ? "Cleaned \(formatBytes(freed))." : "Cleaned \(formatBytes(freed)). Failed: " + failed.joined(separator: "; ")
         refresh(force: true)
@@ -370,9 +501,14 @@ final class AppModel {
 
     func moveToTrash(_ n: NodeInfo) {
         let url = URL(fileURLWithPath: path(n))
-        if (try? FileManager.default.trashItem(at: url, resultingItemURL: nil)) != nil {
+        do {
+            if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.trashItem(at: url, resultingItemURL: nil) }
             store.remove(n.id)
+            dropFromDevIndex([n.id], allRemoved: false)
             refresh(force: true)
+            cleanMessage = "Moved “\(n.name)” to the Trash."
+        } catch {
+            cleanMessage = "Could not move “\(n.name)” to the Trash: \(error.localizedDescription)"
         }
     }
 }

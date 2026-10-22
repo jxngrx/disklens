@@ -118,13 +118,15 @@ enum TreemapRenderer {
             // Cleanable: accent outline plus a safety badge.
             if let rule = box.rule {
                 ctx.stroke(shape, with: .color(Color.yellow.opacity(0.95)), lineWidth: 2)
-                drawBadge(&ctx, rule.safety, in: r)
+                // ponytail: text scales with the zoom transform and blurs mid-animation; skip it
+                // while zooming instead of shipping a blurry badge, draw once the zoom settles.
+                if zoom == nil { drawBadge(&ctx, rule.safety, in: r) }
             }
 
             if box.id == hovered {
                 ctx.stroke(shape, with: .color(.white.opacity(0.9)), lineWidth: 2)
             }
-            drawLabel(&ctx, box: box, rect: r)
+            if zoom == nil { drawLabel(&ctx, box: box, rect: r) }
         }
     }
 

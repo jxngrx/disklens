@@ -7,6 +7,9 @@ options:
 packages:
   DiskLensCore:
     path: Packages/DiskLensCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.4
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -19,14 +22,22 @@ targets:
     type: application
     platform: macOS
     sources: [App]
+    info:
+      path: App/Info.plist
+      properties:
+        SUFeedURL: https://shubhamjangra.github.io/disklens/appcast.xml
+        SUPublicEDKey: xYazEiiDG1VlRJSjR658NyFWQWcod3/JJeHl0luBBiQ=
+        SUEnableAutomaticChecks: true
     dependencies:
       - package: DiskLensCore
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.disklens.app
         PRODUCT_NAME: DiskLens
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: DiskLens
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         MARKETING_VERSION: "0.1.0"

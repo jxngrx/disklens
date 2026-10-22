@@ -7,17 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0E9568C8DED034B23470DB51 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7A616E5AE40064A2FE9DC68C /* Sparkle */; };
 		33D5323C9B17F601862E1160 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC371F0C76FF052F1A3CD0C /* AppModel.swift */; };
 		42A8D474FE332EE9E34EF1A0 /* DebugModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA142B0C8952C521A818E87B /* DebugModes.swift */; };
 		42F2205D2F0A2473A56F8F45 /* DiskLensCore in Frameworks */ = {isa = PBXBuildFile; productRef = A2EF832CCF345F3C7A96CEC9 /* DiskLensCore */; };
 		57B85D468E9CA8E980CBC3FE /* License.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A17B7832E93ABF39028CAA /* License.swift */; };
 		65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99F86BBCB63A3ABFC60F545 /* TreemapView.swift */; };
 		664AA54D82893EC5EECDB987 /* ProViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B1645AE6E30FDD9A8026A82 /* ProViews.swift */; };
+		7427063B332DCCC468783FA1 /* PathTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41DC4F78AF06AFC37163756C /* PathTree.swift */; };
 		88A1DF43AAF849F06A718DD1 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED56641580DBBF22D5DEEE9 /* Category.swift */; };
 		91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6EA64F916BB6811CDD73A37 /* NavigationViews.swift */; };
 		A924BE7ED0206A31482CB4AA /* CleanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B044A7A769D3540090EF75 /* CleanViews.swift */; };
+		ADF46D41BD9610FA9A13CA8E /* AppsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DC91DFCFD6B4D6BE3C9C0D /* AppsView.swift */; };
 		C53F9C2642934270E8098010 /* NavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9282DFA1EBEAB98721B4FF48 /* NavigationUITests.swift */; };
 		F3C072D63D219A2D338B85FB /* DiskLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DA5FEC7C701F315854C258 /* DiskLensApp.swift */; };
+		F7D3790142C1D07C5326906D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4A654E2B0B07E04A19A29E54 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,8 +37,12 @@
 /* Begin PBXFileReference section */
 		0DC371F0C76FF052F1A3CD0C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		1B1645AE6E30FDD9A8026A82 /* ProViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProViews.swift; sourceTree = "<group>"; };
+		288C4A178BED1BFC0D9C5CB5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		35A17B7832E93ABF39028CAA /* License.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = License.swift; sourceTree = "<group>"; };
+		41DC4F78AF06AFC37163756C /* PathTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathTree.swift; sourceTree = "<group>"; };
+		4A654E2B0B07E04A19A29E54 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4ED56641580DBBF22D5DEEE9 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
+		55DC91DFCFD6B4D6BE3C9C0D /* AppsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppsView.swift; sourceTree = "<group>"; };
 		688423D5D3DD9BD3211DBA24 /* DiskLensUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiskLensUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8E69AAF15045DCF39D0CB2CC /* DiskLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DiskLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9282DFA1EBEAB98721B4FF48 /* NavigationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationUITests.swift; sourceTree = "<group>"; };
@@ -52,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				42F2205D2F0A2473A56F8F45 /* DiskLensCore in Frameworks */,
+				0E9568C8DED034B23470DB51 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,8 +105,11 @@
 			isa = PBXGroup;
 			children = (
 				0DC371F0C76FF052F1A3CD0C /* AppModel.swift */,
+				4A654E2B0B07E04A19A29E54 /* Assets.xcassets */,
 				DA142B0C8952C521A818E87B /* DebugModes.swift */,
 				D2DA5FEC7C701F315854C258 /* DiskLensApp.swift */,
+				288C4A178BED1BFC0D9C5CB5 /* Info.plist */,
+				8F4C45B8D07B76BCEFC21C94 /* Apps */,
 				687D8A99F05EFEBBFE2DDDC4 /* Clean */,
 				3D860C741087ABBA8D623DDD /* Navigation */,
 				FEB5E8BA0AF29D5653C38DA2 /* Treemap */,
@@ -119,9 +131,18 @@
 			children = (
 				E7B044A7A769D3540090EF75 /* CleanViews.swift */,
 				35A17B7832E93ABF39028CAA /* License.swift */,
+				41DC4F78AF06AFC37163756C /* PathTree.swift */,
 				1B1645AE6E30FDD9A8026A82 /* ProViews.swift */,
 			);
 			path = Clean;
+			sourceTree = "<group>";
+		};
+		8F4C45B8D07B76BCEFC21C94 /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				55DC91DFCFD6B4D6BE3C9C0D /* AppsView.swift */,
+			);
+			path = Apps;
 			sourceTree = "<group>";
 		};
 		FEB5E8BA0AF29D5653C38DA2 /* Treemap */ = {
@@ -141,6 +162,7 @@
 			buildConfigurationList = 71FC2495D1E0AA9DAF17A0E3 /* Build configuration list for PBXNativeTarget "DiskLens" */;
 			buildPhases = (
 				CE40079D7897247C5E10095A /* Sources */,
+				9B36E0864334A2FD9D1473A1 /* Resources */,
 				321D13F567400FE8E3270475 /* Frameworks */,
 			);
 			buildRules = (
@@ -150,6 +172,7 @@
 			name = DiskLens;
 			packageProductDependencies = (
 				A2EF832CCF345F3C7A96CEC9 /* DiskLensCore */,
+				7A616E5AE40064A2FE9DC68C /* Sparkle */,
 			);
 			productName = DiskLens;
 			productReference = 8E69AAF15045DCF39D0CB2CC /* DiskLens.app */;
@@ -203,6 +226,7 @@
 			mainGroup = 47E7F35E6F4C831300D47C64;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				10F41A54C8265F30AE20EE2A /* XCRemoteSwiftPackageReference "Sparkle" */,
 				F720CA3334E27880E8DE5540 /* XCLocalSwiftPackageReference "Packages/DiskLensCore" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -215,6 +239,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9B36E0864334A2FD9D1473A1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F7D3790142C1D07C5326906D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BB977CCBE5172D5B38BD4259 /* Sources */ = {
@@ -230,12 +265,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				33D5323C9B17F601862E1160 /* AppModel.swift in Sources */,
+				ADF46D41BD9610FA9A13CA8E /* AppsView.swift in Sources */,
 				88A1DF43AAF849F06A718DD1 /* Category.swift in Sources */,
 				A924BE7ED0206A31482CB4AA /* CleanViews.swift in Sources */,
 				42A8D474FE332EE9E34EF1A0 /* DebugModes.swift in Sources */,
 				F3C072D63D219A2D338B85FB /* DiskLensApp.swift in Sources */,
 				57B85D468E9CA8E980CBC3FE /* License.swift in Sources */,
 				91138521CDE4DAA89DBD6866 /* NavigationViews.swift in Sources */,
+				7427063B332DCCC468783FA1 /* PathTree.swift in Sources */,
 				664AA54D82893EC5EECDB987 /* ProViews.swift in Sources */,
 				65FAB5F57E4256D92A074E51 /* TreemapView.swift in Sources */,
 			);
@@ -262,6 +299,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = DiskLens;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -388,6 +426,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = DiskLens;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -500,7 +539,23 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		10F41A54C8265F30AE20EE2A /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		7A616E5AE40064A2FE9DC68C /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 10F41A54C8265F30AE20EE2A /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		A2EF832CCF345F3C7A96CEC9 /* DiskLensCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DiskLensCore;

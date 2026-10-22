@@ -1,0 +1,16 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - name: Core tests
+        run: cd Packages/DiskLensCore && swift test
+      - name: App build
+        run: |
+          xcodegen generate
+          xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -configuration Release build CODE_SIGNING_ALLOWED=NO

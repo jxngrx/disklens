@@ -403,6 +403,28 @@ public final class TreeStore: @unchecked Sendable {
         }
     }
 
+    /// Paths of live nodes whose name satisfies `match`. Reads the name array only, so a whole-disk search is cheap.
+    public func paths(nameMatching match: (String) -> Bool, limit: Int = 500) -> [String] {
+        lock.withLock {
+            var out: [String] = []
+            for i in 1..<max(1, name.count) where parent[i] >= 0 && match(name[i]) && isLive(Int32(i)) {
+                out.append(pathUnlocked(Int32(i)))
+                if out.count >= limit { break }
+            }
+            return out
+        }
+    }
+
+    /// Live nodes tagged with a cleanup rule. Reads the rule array directly instead of building a
+    /// NodeInfo (and its name String) for every node, which made `nodes(where:)` take seconds on a full disk.
+    public func ruleTaggedNodes() -> [NodeInfo] {
+        lock.withLock {
+            var out: [NodeInfo] = []
+            for i in 0..<Int32(ruleID.count) where ruleID[Int(i)] != 0 && isLive(i) { out.append(info(i)) }
+            return out
+        }
+    }
+
     /// All live nodes matching a predicate (used by rule tagging and projects view).
     public func nodes(where match: (NodeInfo) -> Bool) -> [NodeInfo] {
         lock.withLock {

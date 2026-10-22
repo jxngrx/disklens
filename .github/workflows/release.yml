@@ -1,0 +1,54 @@
+name: Release
+# Tag vX.Y.Z -> signed (and notarized when secrets exist) DMG on Releases + Sparkle appcast on Pages.
+# Secrets: DEVID_P12 (base64 .p12), DEVID_P12_PASSWORD, SPARKLE_PRIVATE_KEY (generate_keys -x),
+#          optional APPLE_ID, APPLE_APP_PASSWORD, APPLE_TEAM_ID (notarization).
+on:
+  push: { tags: ["v*"] }
+permissions: { contents: write, actions: write }
+jobs:
+  release:
+    runs-on: macos-15
+    env: { VERSION: "${{ github.ref_name }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen create-dmg
+      - name: Import certificate
+        env: { P12: "${{ secrets.DEVID_P12 }}", PW: "${{ secrets.DEVID_P12_PASSWORD }}" }
+        run: |
+          echo "$P12" | base64 -D > c.p12
+          security create-keychain -p ci ci.keychain
+          security default-keychain -s ci.keychain
+          security unlock-keychain -p ci ci.keychain
+          security import c.p12 -k ci.keychain -P "$PW" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci ci.keychain
+      - name: Build
+        run: |
+          V=${VERSION#v}
+          xcodegen generate
+          xcodebuild -project DiskLens.xcodeproj -scheme DiskLens -configuration Release \
+            -derivedDataPath build MARKETING_VERSION=$V CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO build
+          scripts/sign.sh build/Build/Products/Release/DiskLens.app "Developer ID Application"
+      - name: DMG
+        run: |
+          create-dmg --volname DiskLens --app-drop-link 420 150 DiskLens.dmg build/Build/Products/Release/DiskLens.app \
+            || hdiutil create -volname DiskLens -srcfolder build/Build/Products/Release/DiskLens.app -ov -format UDZO DiskLens.dmg
+      - name: Notarize
+        if: env.APPLE_ID != ''
+        env:
+          APPLE_ID: "${{ secrets.APPLE_ID }}"
+          APPLE_APP_PASSWORD: "${{ secrets.APPLE_APP_PASSWORD }}"
+          APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID }}"
+        run: |
+          xcrun notarytool submit DiskLens.dmg --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple DiskLens.dmg
+      - name: Appcast
+        env: { KEY: "${{ secrets.SPARKLE_PRIVATE_KEY }}" }
+        run: scripts/appcast.sh "$VERSION" ${{ github.run_number }} "${{ github.repository }}"
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release create "$VERSION" DiskLens.dmg --generate-notes
+          git config user.name github-actions; git config user.email actions@github.com
+          git add site/appcast.xml; git commit -m "appcast $VERSION"; git push origin HEAD:main
+          gh workflow run pages.yml

@@ -28,10 +28,24 @@ struct BreadcrumbBar: View {
 
 /// Same children as the treemap, sorted by size, for keyboard and accessibility users.
 struct SidebarList: View {
-    let model: AppModel
+    @Bindable var model: AppModel
 
     var body: some View {
         List {
+            Section {
+                ForEach(AppTab.allCases) { t in
+                    Button { model.tab = t; if t == .quarantine { model.reloadQuarantine() } } label: {
+                        Label(t.title, systemImage: t.icon)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(model.tab == t ? Color.accentColor.opacity(0.25) : nil)
+                    .accessibilityIdentifier("tab-\(t.rawValue)")
+                }
+            }
+            if model.tab == .files {
+            Section("Folders") {
             ForEach(model.children.filter { $0.totalBytes > 0 || $0.kind == .restricted }) { n in
                 Button { if n.isDirectory { model.open(n.id) } } label: {
                     HStack(spacing: 8) {
@@ -45,6 +59,8 @@ struct SidebarList: View {
                 .buttonStyle(.plain)
                 .listRowBackground(model.hovered?.node?.id == n.id ? Color.accentColor.opacity(0.2) : nil)
                 .accessibilityIdentifier("row-\(n.name)")
+            }
+            }
             }
         }
         .listStyle(.sidebar)

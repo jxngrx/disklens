@@ -20,7 +20,7 @@ public enum Projects {
     /// (a node_modules inside node_modules) are folded into their outermost artifact.
     public static func collect(store: TreeStore, rules: RuleSet) -> [ProjectInfo] {
         let artifactID = rules.artifactRule.id
-        let tagged = store.nodes { $0.ruleID == artifactID }
+        let tagged = store.ruleTaggedNodes().filter { $0.ruleID == artifactID }
             .map { (info: $0, path: store.path(of: $0.id)) }
             .filter { !$0.path.isEmpty }
             .sorted { $0.path < $1.path }

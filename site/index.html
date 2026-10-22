@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DiskLens – see your disk, clean dev junk safely</title>
+<meta name="description" content="Native macOS treemap disk map that cleans Xcode, node_modules, Docker and mobile-dev junk with an undo window.">
+<style>
+:root{--bg:#fff;--fg:#14161a;--mute:#5b6270;--card:#f4f5f8;--acc:#2f6bff}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1013;--fg:#eef0f4;--mute:#9aa2b1;--card:#171a20;--acc:#6b95ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:0 20px}
+header{padding:72px 0 32px;text-align:center}h1{font-size:clamp(34px,6vw,58px);line-height:1.08;margin:0 0 16px;letter-spacing:-.02em}
+p.lead{color:var(--mute);font-size:20px;max-width:640px;margin:0 auto 28px}
+.btn{display:inline-block;background:var(--acc);color:#fff;padding:13px 26px;border-radius:12px;text-decoration:none;font-weight:600}
+.sub{color:var(--mute);font-size:14px;margin-top:12px}
+img.hero{width:100%;border-radius:14px;box-shadow:0 20px 60px #0004;margin:36px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin:24px 0 56px}
+.card{background:var(--card);border-radius:14px;padding:22px}.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--mute);font-size:15px}
+h2{font-size:28px;margin:48px 0 8px}img.s{width:100%;border-radius:12px;margin:12px 0}
+footer{color:var(--mute);font-size:14px;padding:40px 0;text-align:center}a{color:var(--acc)}
+</style>
+</head>
+<body><main>
+<header>
+<h1>See what eats your disk.<br>Clean it without fear.</h1>
+<p class="lead">DiskLens maps your whole Mac as a zoomable treemap and clears Xcode, node_modules, Docker and mobile-dev junk — with an undo window.</p>
+<a class="btn" href="https://github.com/shubhamjangra/disklens/releases/latest/download/DiskLens.dmg">Download for macOS</a>
+<div class="sub">macOS 14+ · Apple Silicon &amp; Intel · auto-updates via Sparkle</div>
+</header>
+<img class="hero" src="img/map.png" alt="DiskLens treemap of a full disk">
+<section class="grid">
+<div class="card"><h3>Fast treemap</h3><p>First boxes in under a second. Full 1.8M-file scan in about 12 s, then live updates from FSEvents.</p></div>
+<div class="card"><h3>Safe by design</h3><p>No root. Source files are never touched. Cleaned items go to a quarantine you can restore from.</p></div>
+<div class="card"><h3>Built for developers</h3><p>DerivedData, simulators, node_modules, Gradle, Pods, Docker, Cargo and more — each with its own rule.</p></div>
+<div class="card"><h3>Autopilot</h3><p>Keep-free daemon and menu bar free-space readout for always-on build machines.</p></div>
+</section>
+<h2>Confirm before anything goes</h2>
+<img class="s" src="img/clean.png" alt="Clean confirmation sheet">
+<h2>See what grew</h2>
+<img class="s" src="img/growth.png" alt="Growth timeline">
+<h2>Full Disk Access</h2>
+<p>To size protected folders, add DiskLens in System Settings → Privacy &amp; Security → Full Disk Access, then relaunch. The app links you there when a delete fails for permission.</p>
+<footer>© DiskLens · <a href="https://github.com/shubhamjangra/disklens">GitHub</a> · <a href="https://github.com/shubhamjangra/disklens/releases">Releases</a></footer>
+</main></body></html>

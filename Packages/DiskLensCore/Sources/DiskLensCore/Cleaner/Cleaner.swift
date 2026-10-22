@@ -97,9 +97,23 @@ public enum CleanError: Error, Equatable {
     case commandFailed(String)
 }
 
+extension CleanError {
+    /// Short text for the UI instead of the enum dump.
+    public var message: String {
+        switch self {
+        case .notCleanable: "not cleanable (changed or no longer matches a cleanup rule)"
+        case .crossVolume: "on another volume"
+        case .restoreTargetExists: "something already exists at the original location"
+        case .commandFailed(let out): out.isEmpty ? "failed" : String(out.prefix(160))
+        }
+    }
+}
+
 public struct CleanResult: Sendable {
     public var item: CleanItem
     public var quarantined: QuarantineItem?
+    /// True when the path itself was deleted (tool commands clean inside it and may leave it).
+    public var removed = false
     public var error: CleanError?
 }
 
@@ -135,13 +149,21 @@ public final class Cleaner: Sendable {
                 let r = runner.run(cmd)
                 return CleanResult(item: item, error: r.ok ? nil : .commandFailed(r.output))
             }
+            // Permanent delete by request: no quarantine step. The rule re-check above is the only guard.
+            let fm = FileManager.default
+            if !fm.fileExists(atPath: item.path) { return CleanResult(item: item, removed: true) } // already gone
             do {
-                let q = try quarantine.add(path: item.path, bytes: item.bytes, ruleID: item.rule.id)
-                return CleanResult(item: item, quarantined: q)
-            } catch let e as CleanError {
-                return CleanResult(item: item, error: e)
+                try fm.removeItem(atPath: item.path)
+                return CleanResult(item: item, removed: true)
             } catch {
-                return CleanResult(item: item, error: .notCleanable(item.path))
+                // Read-only folders (some package caches) block deletion: make them writable once and retry.
+                _ = CommandRunner.query(["chmod", "-R", "u+w", item.path])
+                do {
+                    try fm.removeItem(atPath: item.path)
+                    return CleanResult(item: item, removed: true)
+                } catch {
+                    return CleanResult(item: item, error: .commandFailed(error.localizedDescription))
+                }
             }
         }
     }
