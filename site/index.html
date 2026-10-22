@@ -3,43 +3,89 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DiskLens – see your disk, clean dev junk safely</title>
-<meta name="description" content="Native macOS treemap disk map that cleans Xcode, node_modules, Docker and mobile-dev junk with an undo window.">
-<style>
-:root{--bg:#fff;--fg:#14161a;--mute:#5b6270;--card:#f4f5f8;--acc:#2f6bff}
-@media(prefers-color-scheme:dark){:root{--bg:#0e1013;--fg:#eef0f4;--mute:#9aa2b1;--card:#171a20;--acc:#6b95ff}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{max-width:980px;margin:0 auto;padding:0 20px}
-header{padding:72px 0 32px;text-align:center}h1{font-size:clamp(34px,6vw,58px);line-height:1.08;margin:0 0 16px;letter-spacing:-.02em}
-p.lead{color:var(--mute);font-size:20px;max-width:640px;margin:0 auto 28px}
-.btn{display:inline-block;background:var(--acc);color:#fff;padding:13px 26px;border-radius:12px;text-decoration:none;font-weight:600}
-.sub{color:var(--mute);font-size:14px;margin-top:12px}
-img.hero{width:100%;border-radius:14px;box-shadow:0 20px 60px #0004;margin:36px 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin:24px 0 56px}
-.card{background:var(--card);border-radius:14px;padding:22px}.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--mute);font-size:15px}
-h2{font-size:28px;margin:48px 0 8px}img.s{width:100%;border-radius:12px;margin:12px 0}
-footer{color:var(--mute);font-size:14px;padding:40px 0;text-align:center}a{color:var(--acc)}
-</style>
+<title>DiskLens – see where your disk went</title>
+<meta name="description" content="DiskLens maps your whole Mac as a zoomable treemap and safely clears Xcode, node_modules, Docker and mobile-dev junk, with an undo window.">
+<meta name="theme-color" content="#0a0b0d">
+<meta property="og:title" content="DiskLens – see where your disk went">
+<meta property="og:description" content="A treemap of your whole Mac. Clean developer junk with an undo window.">
+<meta property="og:image" content="img/map.webp">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='14' cy='14' r='9' fill='none' stroke='%23d4f24a' stroke-width='3'/%3E%3Cpath d='M21 21l7 7' stroke='%23d4f24a' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-<body><main>
-<header>
-<h1>See what eats your disk.<br>Clean it without fear.</h1>
-<p class="lead">DiskLens maps your whole Mac as a zoomable treemap and clears Xcode, node_modules, Docker and mobile-dev junk — with an undo window.</p>
-<a class="btn" href="https://github.com/jxngrx/disklens/releases/latest/download/DiskLens.dmg">Download for macOS</a>
-<div class="sub">macOS 14+ · Apple Silicon &amp; Intel · auto-updates via Sparkle</div>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#top" aria-label="DiskLens">
+    <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="14" cy="14" r="9" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M21 21l7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    DiskLens
+  </a>
+  <div class="nav-links">
+    <a href="#tour">Tour</a>
+    <a href="#safe">Safety</a>
+    <a href="https://github.com/jxngrx/disklens">GitHub</a>
+    <a class="pill" href="https://github.com/jxngrx/disklens/releases/latest/download/DiskLens.dmg">Download</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="field" id="field" aria-hidden="true">
+    <div class="layer base" id="baseLayer"></div>
+    <div class="layer lit" id="litLayer"></div>
+    <div class="lens" id="lens"><span></span></div>
+  </div>
+  <div class="hero-copy">
+    <h1>See where<br>your disk <em>went.</em></h1>
+    <p>A treemap of your whole Mac, built for developers. Find the 40&nbsp;GB of DerivedData, clear it, and undo if you change your mind.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/jxngrx/disklens/releases/latest/download/DiskLens.dmg">Download for macOS</a>
+      <span class="meta">Free · macOS 14+ · auto-updates</span>
+    </div>
+  </div>
+  <div class="hint" id="hint">Move the lens</div>
 </header>
-<img class="hero" src="img/map.png" alt="DiskLens treemap of a full disk">
-<section class="grid">
-<div class="card"><h3>Fast treemap</h3><p>First boxes in under a second. Full 1.8M-file scan in about 12 s, then live updates from FSEvents.</p></div>
-<div class="card"><h3>Safe by design</h3><p>No root. Source files are never touched. Cleaned items go to a quarantine you can restore from.</p></div>
-<div class="card"><h3>Built for developers</h3><p>DerivedData, simulators, node_modules, Gradle, Pods, Docker, Cargo and more — each with its own rule.</p></div>
-<div class="card"><h3>Autopilot</h3><p>Keep-free daemon and menu bar free-space readout for always-on build machines.</p></div>
+
+<section class="tour" id="tour">
+  <div class="sticky">
+    <div class="stage">
+      <div class="win" id="win">
+        <img class="shot on" data-i="0" src="img/map.webp" width="1280" height="800" alt="DiskLens treemap of a 230 GB disk">
+        <img class="shot" data-i="1" src="img/clean.webp" width="1050" height="800" alt="Clean confirmation sheet listing what will be removed">
+        <img class="shot" data-i="2" src="img/growth.webp" width="1280" height="800" alt="Growth timeline of disk usage">
+      </div>
+    </div>
+    <ol class="steps" id="steps">
+      <li class="on" data-i="0"><h2>Everything, in one map.</h2><p>Every folder is a box sized by what it really takes. First boxes appear in under a second; a million files in about twelve.</p></li>
+      <li data-i="1"><h2>Confirm before it goes.</h2><p>Each cleanup rule shows exactly what it removes and how much it frees. Nothing runs until you say so.</p></li>
+      <li data-i="2"><h2>Watch what grows.</h2><p>A timeline shows which folders ballooned this week, so the next surprise is not a full disk.</p></li>
+    </ol>
+    <div class="rail" aria-hidden="true"><i id="railFill"></i></div>
+  </div>
 </section>
-<h2>Confirm before anything goes</h2>
-<img class="s" src="img/clean.png" alt="Clean confirmation sheet">
-<h2>See what grew</h2>
-<img class="s" src="img/growth.png" alt="Growth timeline">
-<h2>Full Disk Access</h2>
-<p>To size protected folders, add DiskLens in System Settings → Privacy &amp; Security → Full Disk Access, then relaunch. The app links you there when a delete fails for permission.</p>
-<footer>© DiskLens · <a href="https://github.com/jxngrx/disklens">GitHub</a> · <a href="https://github.com/jxngrx/disklens/releases">Releases</a></footer>
-</main></body></html>
+
+<section class="facts" id="safe">
+  <h2>Careful by default.</h2>
+  <dl>
+    <div><dt>No root, ever.</dt><dd>It never asks for sudo and never touches your source files.</dd></div>
+    <div><dt>Undo window.</dt><dd>Cleaned items wait in quarantine. Restore any of them with one click.</dd></div>
+    <div><dt>Knows dev junk.</dt><dd>DerivedData, simulators, node_modules, Gradle, Pods, Cargo, Docker and more, each with its own rule.</dd></div>
+    <div><dt>Stays current.</dt><dd>Live updates from FSEvents. A menu bar readout keeps your free space in sight.</dd></div>
+  </dl>
+</section>
+
+<section class="end">
+  <h2>Find the weight.</h2>
+  <a class="btn big" href="https://github.com/jxngrx/disklens/releases/latest/download/DiskLens.dmg">Download DiskLens</a>
+  <p class="meta">To size protected folders, add DiskLens under System Settings → Privacy &amp; Security → Full Disk Access, then relaunch.</p>
+</section>
+
+<footer>
+  <span>© DiskLens</span>
+  <span><a href="https://github.com/jxngrx/disklens">GitHub</a> · <a href="https://github.com/jxngrx/disklens/releases">Releases</a></span>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>
