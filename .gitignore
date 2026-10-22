@@ -25,3 +25,7 @@ sparkle_private*
 *_private_key*
 key.txt
 releasecreds/
+
+# Release artifacts and local tooling
+*.dmg
+.claude/
