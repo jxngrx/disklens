@@ -2,7 +2,7 @@
 
 Native macOS treemap disk map that safely cleans developer junk (Xcode, node_modules, Docker, Gradle, Pods…) with an undo quarantine.
 
-- Download: [latest release](https://github.com/shubhamjangra/disklens/releases/latest) · site: https://shubhamjangra.github.io/disklens/
+- Download: [latest release](https://github.com/jxngrx/disklens/releases/latest) · site: https://jxngrx.github.io/disklens/
 - Build: `xcodegen generate && xcodebuild -project DiskLens.xcodeproj -scheme DiskLens build`
 - Core tests: `cd Packages/DiskLensCore && swift test`
 
