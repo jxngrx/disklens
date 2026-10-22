@@ -48,7 +48,7 @@ jobs:
       - name: Publish
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          gh release create "$VERSION" DiskLens.dmg --generate-notes
-          git config user.name github-actions; git config user.email actions@github.com
-          git add site/appcast.xml; git commit -m "appcast $VERSION"; git push origin HEAD:main
+          # appcast.xml rides on the release; pages.yml pulls it, so nothing pushes to the protected main
+          gh release create "$VERSION" DiskLens.dmg site/appcast.xml --generate-notes \
+            || gh release upload "$VERSION" DiskLens.dmg site/appcast.xml --clobber
           gh workflow run pages.yml
