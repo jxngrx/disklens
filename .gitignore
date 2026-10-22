@@ -5,3 +5,23 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
+
+# Private / secrets
+releasecreds/
+key.txt
+*.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.keychain*
+.env
+.env.*
+*secret*
+*credentials*
+sparkle_private*
+*_private_key*
+key.txt
+releasecreds/
