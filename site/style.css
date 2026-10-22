@@ -96,6 +96,7 @@ dd{margin:0;color:var(--mute);max-width:44ch}
 .end h2{font-size:clamp(3rem,10vw,7rem);line-height:1;margin-bottom:36px}
 .end .meta{max-width:54ch;margin:26px auto 0}
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:24px clamp(16px,4vw,40px);color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
+footer .social{display:flex;gap:22px;flex-wrap:wrap}
 footer a{text-decoration:none}footer a:hover{color:var(--fg)}
 
 @media(prefers-reduced-motion:reduce){
