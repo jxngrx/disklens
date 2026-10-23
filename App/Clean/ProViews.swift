@@ -141,12 +141,13 @@ final class DiskStatus {
     func notifyLowDisk() {
         let center = UNUserNotificationCenter.current()
         let free = formatBytes(freeBytes)
-        center.requestAuthorization(options: [.alert]) { granted, _ in
-            guard granted else { return }
+        // async API: the callback form ran a @MainActor-inferred closure on the notification queue and trapped.
+        Task {
+            guard (try? await center.requestAuthorization(options: [.alert])) == true else { return }
             let c = UNMutableNotificationContent()
             c.title = "Disk almost full"
             c.body = "\(free) free. Open DiskLens to see what is cleanable."
-            center.add(UNNotificationRequest(identifier: "low-disk", content: c, trigger: nil))
+            try? await center.add(UNNotificationRequest(identifier: "low-disk", content: c, trigger: nil))
         }
     }
 }
