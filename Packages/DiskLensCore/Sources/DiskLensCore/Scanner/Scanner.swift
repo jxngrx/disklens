@@ -150,6 +150,7 @@ public final class DiskScanner: Sendable {
             _ = store.apply(Listing(), to: item.id)
             return []
         case .success(let entries):
+            store.clearRestricted(item.id)
             let listing = makeListing(dirPath: item.path, owner: item.id, entries: entries)
             let added = store.apply(listing, to: item.id)
             hook?(store, item.id, item.path, entries, added)

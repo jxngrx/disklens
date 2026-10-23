@@ -44,6 +44,13 @@ public final class LiveIndex: @unchecked Sendable {
     public func start(watch: Bool = true) async {
         if let meta = loaded {
             if watch { startWatcher(since: meta.eventID) } else { lock.withLock { _caughtUp = true } }
+            // The snapshot keeps "Restricted" from before Full Disk Access was granted; retry those folders.
+            let denied = store.nodes { $0.kind == .restricted }.map(\.id)
+            if !denied.isEmpty {
+                await scanner.rescan(denied)
+                scanner.updateSystemOther()
+                try? save()
+            }
             return
         }
         let startID = FSWatcher.currentEventID

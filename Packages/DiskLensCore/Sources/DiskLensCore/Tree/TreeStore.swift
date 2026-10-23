@@ -219,6 +219,15 @@ public final class TreeStore: @unchecked Sendable {
         nextSibling[Int(id)] = -1
     }
 
+    /// A folder that was permission-denied can be read now (access was granted after the index was saved).
+    public func clearRestricted(_ node: NodeID) {
+        lock.withLock {
+            guard kind[Int(node.raw)] == .restricted else { return }
+            kind[Int(node.raw)] = .dir
+            restrictedCount -= 1
+        }
+    }
+
     public func markRestricted(_ node: NodeID) {
         lock.withLock {
             let id = node.raw
